@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from keyboards.main_menu import main_keyboard
 from region import AQUA_GENERATE_DOMAIN
+from services.aqua_keys import aqua_api_base
 from services.aqua_keys import (
     AQUA_PROFILE_ID_KEY,
     AQUA_SERVICE_CHOICES,
@@ -99,7 +100,7 @@ async def _render_profile(target: Message | CallbackQuery, *, edit: bool = False
     text = (
         format_aqua_profile_message(p)
         + f"\n\n{team_line}\n"
-        f"🌐 <code>{e(AQUA_GENERATE_DOMAIN)}</code>"
+        f"🌐 API: <code>{e(aqua_api_base())}</code>"
     )
     kb = _profile_kb(p.service)
     if isinstance(target, CallbackQuery):

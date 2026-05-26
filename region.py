@@ -11,7 +11,7 @@ MARKETPLACE_NAME = "Tori.fi"
 AQUA_DEFAULT_SERVICE = (os.getenv("AQUA_DEFAULT_SERVICE", "tori_fi") or "tori_fi").strip()
 GAG_DEFAULT_SERVICE = AQUA_DEFAULT_SERVICE  # совместимость
 
-# Домен генерации ссылок (в Aqua — OLD)
+# Legacy: на api-old.goo.network поле domain в теле не используется (как Finkabot).
 AQUA_GENERATE_DOMAIN = (os.getenv("AQUA_GENERATE_DOMAIN", "OLD") or "OLD").strip()
 
 HTML_DATA_DIR = "HTMLfi"

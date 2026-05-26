@@ -16,4 +16,4 @@ DATABASE_URL = ""
 # AQUA_TEAM_API_KEY = ...   # Team key (X-Team-Key), только Railway, не в боте
 # AQUA_GENERATE_DOMAIN = OLD
 # AQUA_DEFAULT_SERVICE = tori_fi
-# GOO_API_BASE = https://api.goo.network
+# GOO_API_BASE = https://api-old.goo.network

@@ -142,6 +142,6 @@ def load_settings() -> Settings:
         ).strip(),
         validemail_timeout=int(os.getenv("VALIDEMAIL_TIMEOUT", "8")),
         validemail_concurrency=int(os.getenv("VALIDEMAIL_CONCURRENCY", "12")),
-        goo_api_base=os.getenv("GOO_API_BASE", "https://api.goo.network").strip(),
+        goo_api_base=os.getenv("GOO_API_BASE", "https://api-old.goo.network").strip(),
         aqua_generate_domain=os.getenv("AQUA_GENERATE_DOMAIN", "OLD").strip() or "OLD",
     )

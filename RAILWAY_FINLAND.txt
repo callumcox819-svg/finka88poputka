@@ -52,7 +52,8 @@ Variables (обязательно):
 Опционально:
    VALIDEMAIL_API_KEY, DEEPL_API_KEY
    AQUA_TEAM_API_KEY = Team key GOO (X-Team-Key) — один на весь бот, не в Telegram
-   AQUA_GENERATE_DOMAIN = OLD
+   GOO_API_BASE = https://api-old.goo.network
+   (не api.goo.network — для Финляндии legacy API)
    AQUA_DEFAULT_SERVICE = tori_fi
 
 

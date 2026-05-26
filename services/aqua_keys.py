@@ -41,7 +41,33 @@ def aqua_generate_domain() -> str:
 
 
 def aqua_api_base() -> str:
-    return (os.getenv("GOO_API_BASE", "https://api.goo.network") or "https://api.goo.network").rstrip("/")
+    """Финляндия (команда AQUA): legacy-хост api-old.goo.network (см. Finkabot / docs.goo.network)."""
+    return (
+        os.getenv("GOO_API_BASE", "https://api-old.goo.network")
+        or "https://api-old.goo.network"
+    ).rstrip("/")
+
+
+def aqua_api_host() -> str:
+    from urllib.parse import urlparse
+
+    try:
+        return urlparse(aqua_api_base()).netloc or "api-old.goo.network"
+    except Exception:
+        return "api-old.goo.network"
+
+
+def normalize_aqua_api_key(value: str | None) -> str:
+    """Ключ без пробелов; убрать префикс Apikey, если вставили из заголовка."""
+    from utils.secrets import clean_secret
+
+    v = clean_secret(value)
+    if not v:
+        return ""
+    low = v.lower()
+    if low.startswith("apikey"):
+        v = v[6:].lstrip(":").strip()
+    return v
 
 
 def normalize_aqua_service(code: str | None) -> str | None:
@@ -118,21 +144,21 @@ async def resolve_aqua_service_for_mail(user_id: int, mail: dict) -> str:
 
 
 async def get_user_aqua_api_key(user_id: int) -> str:
-    k = (await get_setting(user_id, AQUA_USER_API_KEY) or "").strip()
+    k = normalize_aqua_api_key(await get_setting(user_id, AQUA_USER_API_KEY))
     if k:
         return k
-    return (await get_setting(user_id, _LEGACY_GAG_API_KEY) or "").strip()
+    return normalize_aqua_api_key(await get_setting(user_id, _LEGACY_GAG_API_KEY))
 
 
 def global_team_aqua_api_key() -> str:
     """Team key задаётся один раз на Railway (AQUA_TEAM_API_KEY), не у пользователей."""
     v = (os.getenv("AQUA_TEAM_API_KEY") or os.getenv("TEAM_API_KEY") or "").strip()
     if v:
-        return v
+        return normalize_aqua_api_key(v)
     try:
         import config
 
-        return (getattr(config, "AQUA_TEAM_API_KEY", "") or "").strip()
+        return normalize_aqua_api_key(getattr(config, "AQUA_TEAM_API_KEY", "") or "")
     except Exception:
         return ""
 
@@ -141,7 +167,7 @@ async def get_team_aqua_api_key(user_id: int) -> str:
     g = global_team_aqua_api_key()
     if g:
         return g
-    return (await get_setting(user_id, AQUA_TEAM_API_KEY) or "").strip()
+    return normalize_aqua_api_key(await get_setting(user_id, AQUA_TEAM_API_KEY))
 
 
 async def get_aqua_profile_id(user_id: int) -> str:
