@@ -105,8 +105,8 @@ def format_aqua_profile_message(profile: AquaProfile) -> str:
     lines.extend(
         [
             "",
-            "<i>tori.fi / posti.fi в ссылке — сервис подставится сам.</i>",
-            "<i>Facebook и другие ссылки — берётся выбранный сервис выше.</i>",
+            "<i>Выбранный сервис всегда важнее ссылки tori/posti в объявлении.</i>",
+            "<i>Если сервис не выбран — подставится по URL или Tori по умолчанию.</i>",
             "",
             "Для генерации: <b>profileID</b> + <b>User API key</b> + <b>сервис</b>.",
         ]
@@ -204,9 +204,12 @@ async def generate_link_for_user(
         )
 
     listing = (offer_link or "").strip()
+    raw_svc = await get_setting(user_id, AQUA_SERVICE_KEY) or await get_setting(
+        user_id, _LEGACY_GAG_SERVICE
+    )
     service = resolve_aqua_service(
         offer_link=listing,
-        user_setting=profile.service,
+        user_setting=(raw_svc or "").strip() or None,
     )
     if not listing.startswith("http") and not (title or "").strip():
         raise AquaNotConfiguredError(

@@ -142,8 +142,8 @@ async def aqua_service_menu(callback: CallbackQuery, state: FSMContext) -> None:
             f"Сейчас: <b>{e(cur_label)}</b>\n\n"
             "• <b>Tori.fi</b> — объявления Tori, Facebook без явной ссылки posti\n"
             "• <b>Posti.fi</b> — Posti, Facebook если нужен шаблон Posti\n\n"
-            "<i>Если в ссылке есть tori.fi или posti.fi — сервис определится "
-            "автоматически, выбор ниже для Facebook и прочих URL.</i>"
+            "<i>Выбранный сервис используется для Aqua-ссылок и HTML, "
+            "даже если в объявлении другая площадка (tori/posti).</i>"
         ),
         reply_markup=_service_menu_kb(cur),
     )

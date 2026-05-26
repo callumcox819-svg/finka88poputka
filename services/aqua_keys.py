@@ -81,18 +81,25 @@ def aqua_service_from_link(link: str) -> str | None:
 
 
 def resolve_aqua_service(*, offer_link: str = "", user_setting: str | None = None) -> str:
-    """Сервис Aqua: по URL объявления, иначе настройка пользователя, иначе дефолт региона."""
-    from_link = aqua_service_from_link(offer_link)
-    if from_link:
-        return from_link
+    """Сервис Aqua: сначала выбор в 📋 Профиле, иначе tori/posti в URL, иначе дефолт региона."""
     chosen = normalize_aqua_service(user_setting)
     if chosen:
         return chosen
+    from_link = aqua_service_from_link(offer_link)
+    if from_link:
+        return from_link
     return AQUA_DEFAULT_SERVICE
 
 
 async def resolve_aqua_service_for_mail(user_id: int, mail: dict) -> str:
-    """Сервис для HTML-ответа: service_label → item_link лида → настройка пользователя."""
+    """Сервис для HTML: профиль → метка письма → ссылка лида → дефолт."""
+    raw = (await get_setting(user_id, AQUA_SERVICE_KEY) or "").strip()
+    if not raw:
+        raw = (await get_setting(user_id, _LEGACY_GAG_SERVICE) or "").strip()
+    chosen = normalize_aqua_service(raw)
+    if chosen:
+        return chosen
+
     label = normalize_aqua_service((mail.get("service_label") or "").strip())
     if label:
         return label
@@ -107,8 +114,7 @@ async def resolve_aqua_service_for_mail(user_id: int, mail: dict) -> str:
             if from_link:
                 return from_link
 
-    raw = (await get_setting(user_id, AQUA_SERVICE_KEY) or "").strip()
-    return resolve_aqua_service(offer_link="", user_setting=raw)
+    return AQUA_DEFAULT_SERVICE
 
 
 async def get_user_aqua_api_key(user_id: int) -> str:

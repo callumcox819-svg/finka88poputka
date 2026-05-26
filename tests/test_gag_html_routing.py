@@ -63,11 +63,18 @@ class GagHtmlRoutingTest(unittest.TestCase):
             "tori_fi",
         )
 
-    def test_marketplace_link_overrides_profile(self) -> None:
+    def test_profile_overrides_marketplace_link(self) -> None:
         self.assertEqual(
             resolve_aqua_service(
                 offer_link="https://www.tori.fi/a/1",
                 user_setting="posti_fi",
+            ),
+            "posti_fi",
+        )
+        self.assertEqual(
+            resolve_aqua_service(
+                offer_link="https://www.posti.fi/ilmoitus/1",
+                user_setting="tori_fi",
             ),
             "tori_fi",
         )
