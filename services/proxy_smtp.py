@@ -59,6 +59,7 @@ def _smtp_over_proxy(
         ssock = ctx.wrap_socket(sock, server_hostname=smtp_host)
         srv = smtplib.SMTP_SSL(timeout=timeout)
         srv.sock = ssock
+        srv._host = smtp_host
         try:
             srv.file = ssock.makefile("rb")
         except Exception:
@@ -69,6 +70,7 @@ def _smtp_over_proxy(
     sock.connect((smtp_host, smtp_port))
     srv = smtplib.SMTP(timeout=timeout)
     srv.sock = sock
+    srv._host = smtp_host
     try:
         srv.file = sock.makefile("rb")
     except Exception:
