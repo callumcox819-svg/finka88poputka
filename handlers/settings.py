@@ -265,14 +265,14 @@ async def spoof_name_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await cq_edit_text(
         callback,
         (
-            f"👤 <b>Имя для спуфинга</b>\n\n"
-            f"Имя (From): <b>{e(cur_name)}</b>\n"
-            f"Тема (Subject): <b>{e(cur_subj)}</b>\n\n"
+            f"👤 <b>Имя для спуфинга</b> (только HTML)\n\n"
+            f"Имя для <code>{{{{NICK}}}}</code>: <b>{e(cur_name)}</b>\n"
+            f"Тема HTML: <b>{e(cur_subj)}</b>\n\n"
             "При <b>HTML</b> строго из этой секции:\n"
-            "• <b>From</b> и <code>{{NICK}}</code> — только «Имя» выше\n"
-            "• <b>Subject</b> — только «Установить тему»\n"
-            "Тема входящего и имя из «добавления почты» <b>не</b> используются.\n"
-            f"Для обычной рассылки (не HTML) From: <i>{e(mailing_from)}</i>\n"
+            "• <code>{{NICK}}</code> в шаблоне — «Имя» выше\n"
+            "• <b>Subject</b> — «Установить тему»\n"
+            "Поле <b>From</b> и обычная рассылка — имя из «➕ Добавить почту».\n"
+            f"Сейчас From для рассылки: <i>{e(mailing_from)}</i>\n"
             "HTML — только через прокси, с Aqua-ссылкой в <code>{{LINK}}</code>.\n"
         ),
         reply_markup=kb,
@@ -285,7 +285,8 @@ async def spoof_name_set(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(SettingsInput.spoof_name)
     await cq_edit_text(
         callback,
-        "Введите имя и фамилию для отправки (например <code>Maria Johansen</code>):",
+        "Введите имя для HTML (<code>{{NICK}}</code> в шаблоне), "
+        "например <code>Posti.fi Vahvistus</code>:",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="🚫 Отмена", callback_data="spoof_name_menu")]

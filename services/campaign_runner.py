@@ -110,7 +110,7 @@ async def run_campaign(
                 )
                 return
             html_line = (
-                "\n📄 HTML: шаблон, GAG-ссылка, прокси; тема/имя — 👤 Имя для спуфинга."
+                "\n📄 HTML: шаблон, Aqua-ссылка, прокси; тема и {{NICK}} — 👤 Имя для спуфинга."
             )
         await bot.send_message(
             chat_id,

@@ -56,7 +56,8 @@ async def prepare_html_outbound(
     is_html: bool,
 ) -> tuple[str, str, str | None]:
     """
-    HTML: всегда тема и From из спуфинга, в теле — {{NICK}}.
+    HTML: тема и {{NICK}} из спуфинга.
+    Поле From в письме — из smtp_accounts (имя при добавлении почты).
     """
     if not is_html:
         return subject, body, None
@@ -64,4 +65,5 @@ async def prepare_html_outbound(
     name = await get_mandatory_spoof_name(user_id)
     out_subject = await get_mandatory_spoof_subject(user_id)
     out_body = apply_nick_to_html(body, name)
-    return out_subject, out_body, name
+    # From — только из smtp_accounts (имя при добавлении почты), не из спуфинга.
+    return out_subject, out_body, None

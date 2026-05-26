@@ -132,7 +132,8 @@ async def on_format(cb: CallbackQuery, state: FSMContext) -> None:
             "(ТУТТИ / ПОСТ / Ricardo).\n"
             "В поле «текст» укажите имя файла, например <code>confirmation.html</code> "
             "или <code>-</code> по умолчанию.\n"
-            "Имя (From) и тема — только из 👤 Имя для спуфинга.\n"
+            "Имя в шаблоне (<code>{{NICK}}</code>) и тема — только из 👤 Имя для спуфинга.\n"
+            "Поле From — имя из «➕ Добавить почту».\n"
             "Переменные: <code>{{LINK}}</code> (Aqua), <code>{{NICK}}</code>, "
             "<code>{{ITEM_TITLE}}</code> и др."
         )
