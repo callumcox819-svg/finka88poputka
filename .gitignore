@@ -1,0 +1,13 @@
+.env
+config_local.py
+data/*
+!data/.gitkeep
+!data/HTMLfi/
+!data/HTMLfi/**
+!data/test_mail_fixtures.json
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.db

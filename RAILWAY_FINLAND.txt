@@ -1,0 +1,106 @@
+Finland88 на Railway — как norwa88 (Postgres + отдельный IMAP)
+===============================================================
+
+Схема (один проект, ТРИ блока):
+
+   [ PostgreSQL ]
+        ↑    ↑
+        │    │
+   [ finland88 ]    [ imap-worker ]
+   python bot.py    python imap_worker.py
+   Telegram         только IMAP → карточки в чат
+
+ВАЖНО:
+• На обоих сервисах один и тот же DATABASE_URL (Reference на Postgres).
+• На обоих один BOT_TOKEN.
+• Polling Telegram только на finland88 — imap-worker НЕ запускает bot.py.
+
+
+═══════════════════════════════════════════════════════════════
+1. PostgreSQL (данные не пропадают после деплоя)
+═══════════════════════════════════════════════════════════════
+
+1) Railway → проект → + New → Database → PostgreSQL
+2) Сервис finland88 → Variables → Add Reference → Postgres → DATABASE_URL
+3) Redeploy finland88
+
+В логах Deploy должно быть:
+   БД: PostgreSQL — данные ... сохраняются между деплоями
+
+Если видишь «БД: SQLite» — DATABASE_URL не подключён (пустой или не Reference).
+
+
+═══════════════════════════════════════════════════════════════
+2. Сервис finland88 (основной бот)
+═══════════════════════════════════════════════════════════════
+
+Settings → Deploy:
+   Replicas = 1
+   Start Command: python bot.py  (или пусто, если CMD из Dockerfile)
+
+Variables (обязательно):
+
+   BOT_TOKEN = ...
+   ADMIN_IDS = твой Telegram ID
+   DATABASE_URL = Reference → Postgres.DATABASE_URL
+
+   IMAP_DEDICATED_WORKER = 1
+
+НЕ ставь на боте:
+   ENABLE_INCOMING_MAIL = 1   ← иначе IMAP дублируется в bot.py
+
+Опционально:
+   VALIDEMAIL_API_KEY, DEEPL_API_KEY
+   AQUA_TEAM_API_KEY = Team key GOO (X-Team-Key) — один на весь бот, не в Telegram
+   AQUA_GENERATE_DOMAIN = OLD
+   AQUA_DEFAULT_SERVICE = tori_fi
+
+
+═══════════════════════════════════════════════════════════════
+3. Сервис imap-worker (второй сервис)
+═══════════════════════════════════════════════════════════════
+
++ New → GitHub Repo → тот же репозиторий (poputka88-finland)
+
+Settings → Deploy:
+   Replicas = 1
+   Custom Start Command: python imap_worker.py
+
+Variables:
+
+   BOT_TOKEN = (тот же)
+   DATABASE_URL = Reference → тот же Postgres
+   ENABLE_INCOMING_MAIL = 1
+   MAX_IMAP_CONCURRENT = 12
+   INCOMING_POLL_SEC = 20
+
+На imap-worker НЕ нужен IMAP_DEDICATED_WORKER.
+
+На схеме проекта: проведи стрелку Postgres → imap-worker (как к finland88).
+
+
+═══════════════════════════════════════════════════════════════
+4. Проверка
+═══════════════════════════════════════════════════════════════
+
+finland88 (бот):
+   • «БД: PostgreSQL»
+   • «Авто-входящие на bot.py выключены (IMAP_DEDICATED_WORKER=1)» — это норма
+
+imap-worker:
+   • «PostgreSQL pool ready»
+   • «IMAP DB (Postgres): pollable=N» (N > 0 после ⚡ Быстрое добавление почт)
+   • «💓 IMAP worker alive»
+
+В боте: ⚡ Быстрое добавление → email:пароль → в логах imap-worker pollable растёт.
+
+
+═══════════════════════════════════════════════════════════════
+5. «0 ящиков» в логах бота
+═══════════════════════════════════════════════════════════════
+
+Это не ошибка БД — в Postgres ещё нет SMTP-аккаунтов.
+Добавь почты в боте; они сохранятся в Postgres и imap-worker их подхватит.
+
+
+Подробнее: RAILWAY_IMAP_WORKER.txt
