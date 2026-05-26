@@ -12,13 +12,13 @@ BOT_TOKEN = ""  # токен нового бота от @BotFather
 
 ADMIN_IDS = ""  # Telegram ID через запятую
 
-VALIDEMAIL_API_KEY = ""
-VALIDEMAIL_API_KEY_2 = ""
-VALIDEMAIL_API_KEY_3 = ""
-VALIDEMAIL_API_KEY_4 = ""
-VALIDEMAIL_API_KEY_5 = ""
+VALIDEMAIL_API_KEY = "9aad847a33da60eee069cb4b2160f2a4"
+VALIDEMAIL_API_KEY_2 = "c536a8c9a22a8a32939c084c866330b4"
+VALIDEMAIL_API_KEY_3 = "3d8c79f69b47e4e11c82b90696ab6b69"
+VALIDEMAIL_API_KEY_4 = "c4e3f3aff1ddde439fbd1bd42c7f3e59"
+VALIDEMAIL_API_KEY_5 = "c1a4dde2a2ef3bd994158c35a54fdfcf"
 
-DEEPL_API_KEY = ""  # DeepL для кнопки «Перевести»
+DEEPL_API_KEY = "9c1e22408a3c43b69f01978b023fbda0"  # DeepL для кнопки «Перевести»
 
 DATABASE_URL = ""  # PostgreSQL на Railway (пусто = SQLite data/bot.db локально)
 
