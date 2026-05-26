@@ -5,22 +5,24 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from region import AQUA_DEFAULT_SERVICE
 from services.aqua_keys import (
     AQUA_PROFILE_ADDRESS_KEY,
     AQUA_PROFILE_ID_KEY,
     AQUA_PROFILE_NAME_KEY,
     AQUA_PROFILE_PSEUDONYM_KEY,
     AQUA_PROFILE_TITLE_KEY,
+    AQUA_SERVICE_KEY,
     AQUA_USER_API_KEY,
     _LEGACY_GAG_ADDR,
     _LEGACY_GAG_NAME,
+    _LEGACY_GAG_SERVICE,
     _LEGACY_GAG_TITLE,
     aqua_service_label,
     get_aqua_profile_id,
     get_profile_field,
     get_team_aqua_api_key,
     get_user_aqua_api_key,
-    is_valid_aqua_service,
     normalize_aqua_service,
     resolve_aqua_service,
 )
@@ -54,9 +56,10 @@ async def load_aqua_profile(user_id: int, *, username: str = "", telegram_id: in
     title = await get_profile_field(user_id, AQUA_PROFILE_TITLE_KEY, _LEGACY_GAG_TITLE)
     name = await get_profile_field(user_id, AQUA_PROFILE_NAME_KEY, _LEGACY_GAG_NAME)
     addr = await get_profile_field(user_id, AQUA_PROFILE_ADDRESS_KEY, _LEGACY_GAG_ADDR)
-    svc = normalize_aqua_service(
-        await get_setting(user_id, "aqua_service") or await get_setting(user_id, "gag_service")
+    raw_svc = await get_setting(user_id, AQUA_SERVICE_KEY) or await get_setting(
+        user_id, _LEGACY_GAG_SERVICE
     )
+    svc = normalize_aqua_service(raw_svc) or AQUA_DEFAULT_SERVICE
     ukey = await get_user_aqua_api_key(user_id)
     tkey = await get_team_aqua_api_key(user_id)
     return AquaProfile(
@@ -95,13 +98,17 @@ def format_aqua_profile_message(profile: AquaProfile) -> str:
         f"User ID: <code>{profile.telegram_id}</code>",
         f"🆔 profileID: <b>{pid_status}</b>",
         f"🔑 User API: <b>{user_key}</b>",
+        f"📦 Сервис ссылок: <b>{e(profile.service_label)}</b>",
     ]
     if pid_set:
         lines.append(f"   <code>{e(pid)}</code>")
     lines.extend(
         [
             "",
-            "Для генерации ссылок: <b>profileID</b> + <b>User API key</b>.",
+            "<i>tori.fi / posti.fi в ссылке — сервис подставится сам.</i>",
+            "<i>Facebook и другие ссылки — берётся выбранный сервис выше.</i>",
+            "",
+            "Для генерации: <b>profileID</b> + <b>User API key</b> + <b>сервис</b>.",
         ]
     )
     return "\n".join(lines)

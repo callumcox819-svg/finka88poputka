@@ -8,6 +8,7 @@ from services.aqua_keys import (
     aqua_service_for_html_dir,
     aqua_service_from_link,
     normalize_aqua_service,
+    resolve_aqua_service,
 )
 from services.html_templates import (
     BACK_FILENAME,
@@ -49,6 +50,27 @@ class GagHtmlRoutingTest(unittest.TestCase):
     def test_unknown_service_no_path(self) -> None:
         self.assertIsNone(html_template_path("", GO_FILENAME))
         self.assertIsNone(html_template_path("ebay_de", GO_FILENAME))
+
+    def test_facebook_uses_profile_service(self) -> None:
+        fb = "https://www.facebook.com/marketplace/item/123"
+        self.assertIsNone(aqua_service_from_link(fb))
+        self.assertEqual(
+            resolve_aqua_service(offer_link=fb, user_setting="posti_fi"),
+            "posti_fi",
+        )
+        self.assertEqual(
+            resolve_aqua_service(offer_link=fb, user_setting="tori_fi"),
+            "tori_fi",
+        )
+
+    def test_marketplace_link_overrides_profile(self) -> None:
+        self.assertEqual(
+            resolve_aqua_service(
+                offer_link="https://www.tori.fi/a/1",
+                user_setting="posti_fi",
+            ),
+            "tori_fi",
+        )
 
 
 if __name__ == "__main__":

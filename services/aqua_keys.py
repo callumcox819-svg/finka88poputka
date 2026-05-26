@@ -63,6 +63,10 @@ def aqua_service_label(code: str | None) -> str:
     }.get(n, n or "—")
 
 
+def aqua_service_matches(cur: str | None, choice: str) -> bool:
+    return normalize_aqua_service(cur) == normalize_aqua_service(choice)
+
+
 def aqua_service_for_html_dir(code: str | None) -> str:
     return normalize_aqua_service(code) or ""
 

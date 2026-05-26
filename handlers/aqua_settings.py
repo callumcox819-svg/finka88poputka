@@ -1,4 +1,4 @@
-"""Aqua / GOO Network: profileID и личный User API key."""
+"""Aqua / GOO Network: profileID, сервис Tori/Posti и личный User API key."""
 
 from __future__ import annotations
 
@@ -8,8 +8,17 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from keyboards.main_menu import main_keyboard
-from region import AQUA_DEFAULT_SERVICE, AQUA_GENERATE_DOMAIN
-from services.aqua_keys import AQUA_PROFILE_ID_KEY, AQUA_USER_API_KEY, global_team_aqua_api_key
+from region import AQUA_GENERATE_DOMAIN
+from services.aqua_keys import (
+    AQUA_PROFILE_ID_KEY,
+    AQUA_SERVICE_CHOICES,
+    AQUA_SERVICE_KEY,
+    AQUA_USER_API_KEY,
+    aqua_service_label,
+    aqua_service_matches,
+    global_team_aqua_api_key,
+    normalize_aqua_service,
+)
 from services.aqua_user import format_aqua_profile_message, load_aqua_profile
 from services.user_settings import get_setting, set_setting
 from utils.callback_edit import cq_edit_text
@@ -35,9 +44,15 @@ def _back_settings() -> InlineKeyboardMarkup:
     )
 
 
-def _profile_kb() -> InlineKeyboardMarkup:
+def _profile_kb(service_code: str) -> InlineKeyboardMarkup:
+    svc_label = aqua_service_label(service_code)
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"📦 Сервис: {svc_label}", callback_data="aqua_service_menu"
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text="🆔 profileID (Aqua)", callback_data="aqua_set:profile_id"
@@ -54,6 +69,23 @@ def _profile_kb() -> InlineKeyboardMarkup:
     )
 
 
+def _service_menu_kb(cur: str) -> InlineKeyboardMarkup:
+    def mark(code: str) -> str:
+        prefix = "🟩 " if aqua_service_matches(cur, code) else "⬜️ "
+        return prefix + aqua_service_label(code)
+
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=mark(code), callback_data=f"aqua_service_set:{code}"
+            )
+        ]
+        for code in AQUA_SERVICE_CHOICES
+    ]
+    rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="aqua_show:profile")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 async def _render_profile(target: Message | CallbackQuery, *, edit: bool = False) -> None:
     uid = int(target.from_user.id)
     un = (target.from_user.username or "").strip()
@@ -67,9 +99,9 @@ async def _render_profile(target: Message | CallbackQuery, *, edit: bool = False
     text = (
         format_aqua_profile_message(p)
         + f"\n\n{team_line}\n"
-        f"🌐 <code>{e(AQUA_GENERATE_DOMAIN)}</code> · 📦 <code>{e(AQUA_DEFAULT_SERVICE)}</code>"
+        f"🌐 <code>{e(AQUA_GENERATE_DOMAIN)}</code>"
     )
-    kb = _profile_kb()
+    kb = _profile_kb(p.service)
     if isinstance(target, CallbackQuery):
         await cq_edit_text(target, text, reply_markup=kb)
     elif edit and target.bot:
@@ -95,6 +127,41 @@ async def aqua_show_profile(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await _render_profile(callback)
     await callback.answer()
+
+
+@router.callback_query(F.data == "aqua_service_menu")
+async def aqua_service_menu(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    uid = callback.from_user.id
+    cur = normalize_aqua_service(await get_setting(uid, AQUA_SERVICE_KEY) or "") or ""
+    cur_label = aqua_service_label(cur) if cur else "— не выбран —"
+    await cq_edit_text(
+        callback,
+        (
+            "📦 <b>Сервис генерации ссылок Aqua</b>\n\n"
+            f"Сейчас: <b>{e(cur_label)}</b>\n\n"
+            "• <b>Tori.fi</b> — объявления Tori, Facebook без явной ссылки posti\n"
+            "• <b>Posti.fi</b> — Posti, Facebook если нужен шаблон Posti\n\n"
+            "<i>Если в ссылке есть tori.fi или posti.fi — сервис определится "
+            "автоматически, выбор ниже для Facebook и прочих URL.</i>"
+        ),
+        reply_markup=_service_menu_kb(cur),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("aqua_service_set:"))
+async def aqua_service_set(callback: CallbackQuery, state: FSMContext) -> None:
+    try:
+        _, raw = (callback.data or "").split(":", 1)
+    except ValueError:
+        return await callback.answer("Неверные данные", show_alert=True)
+    code = normalize_aqua_service(raw)
+    if not code:
+        return await callback.answer("Неизвестный сервис", show_alert=True)
+    await set_setting(callback.from_user.id, AQUA_SERVICE_KEY, code)
+    await callback.answer(f"✅ {aqua_service_label(code)}")
+    await aqua_service_menu(callback, state)
 
 
 @router.callback_query(
@@ -171,6 +238,5 @@ async def aqua_save_profile_id(message: Message, state: FSMContext) -> None:
         await message.answer("Пустой profileID.")
         return
     await set_setting(message.from_user.id, AQUA_PROFILE_ID_KEY, pid)
-    await set_setting(message.from_user.id, "aqua_service", AQUA_DEFAULT_SERVICE)
     await state.clear()
     await message.answer("✅ profileID сохранён.", reply_markup=main_keyboard())
