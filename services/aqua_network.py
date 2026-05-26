@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from typing import Any
 
 import aiohttp
@@ -17,6 +18,36 @@ logger = logging.getLogger(__name__)
 
 class AquaError(Exception):
     pass
+
+
+def price_to_api_number(price: str | float | int | None) -> float:
+    """Число для поля price в no-parse."""
+    if price is None:
+        return 0.0
+    if isinstance(price, (int, float)):
+        n = float(price)
+        return max(0.0, n)
+    raw = str(price).strip().replace(",", ".")
+    m = re.search(r"([\d.]+)", raw)
+    if not m:
+        return 0.0
+    return max(0.0, float(m.group(1)))
+
+
+def is_auth_aqua_error(exc: AquaError) -> bool:
+    s = str(exc).lower()
+    return "http 401" in s or "http 403" in s or "invalid credentials" in s
+
+
+def is_parse_link_error(exc: AquaError) -> bool:
+    """Aqua не смог распарсить URL (Facebook и др.) — нужен no-parse."""
+    s = str(exc).lower()
+    return (
+        "cant validate link" in s
+        or "can't validate link" in s
+        or "validate link for parsing" in s
+        or ("http 500" in s and "pars" in s)
+    )
 
 
 def _is_transient(err: BaseException) -> bool:
@@ -165,7 +196,7 @@ async def generate_link_no_parse(
     body: dict[str, Any] = {
         "service": service,
         "name": (name or "").strip() or "Item",
-        "price": price,
+        "price": price_to_api_number(price),
         "image": (image or "").strip() or "https://via.placeholder.com/300",
         "profileID": profile_id.strip(),
         "isNeedBalanceChecker": bool(balance_checker),

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 from region import AQUA_DEFAULT_SERVICE
 from services.aqua_keys import (
@@ -26,7 +29,13 @@ from services.aqua_keys import (
     normalize_aqua_service,
     resolve_aqua_service,
 )
-from services.aqua_network import AquaError, generate_link_no_parse, generate_link_with_parse
+from services.aqua_network import (
+    AquaError,
+    generate_link_no_parse,
+    generate_link_with_parse,
+    is_auth_aqua_error,
+    is_parse_link_error,
+)
 from services.link_id import link_id_from_generated_url
 from services.user_settings import get_setting, set_setting
 
@@ -215,26 +224,57 @@ async def generate_link_for_user(
         raise AquaNotConfiguredError(
             "Нет ссылки на объявление и названия товара для генерации."
         )
-    try:
-        if listing.startswith("http"):
-            return await generate_link_with_parse(
-                user_api_key=user_key,
-                team_api_key=team_key,
-                service=service,
-                listing_url=listing,
-                profile_id=profile.profile_id,
-                balance_checker=balance_checker,
-            )
+
+    title_s = (title or "").strip()
+    img = (image or "").strip()
+    if not img.lower().startswith(("http://", "https://")):
+        img = "https://via.placeholder.com/300"
+
+    async def _no_parse() -> str:
         return await generate_link_no_parse(
             user_api_key=user_key,
             team_api_key=team_key,
             service=service,
-            name=title.strip(),
+            name=title_s or "Item",
             price=(price or "").strip() or "0",
-            image=(image or "").strip() or "https://via.placeholder.com/300",
+            image=img,
             profile_id=profile.profile_id,
             balance_checker=balance_checker,
         )
+
+    try:
+        if listing.startswith("http"):
+            low = listing.lower()
+            skip_parse = "facebook.com" in low or "fb.com" in low
+            if not skip_parse:
+                try:
+                    return await generate_link_with_parse(
+                        user_api_key=user_key,
+                        team_api_key=team_key,
+                        service=service,
+                        listing_url=listing,
+                        profile_id=profile.profile_id,
+                        image=img if img != "https://via.placeholder.com/300" else None,
+                        balance_checker=balance_checker,
+                    )
+                except AquaError as exc:
+                    if is_auth_aqua_error(exc) or not title_s:
+                        raise
+                    if is_parse_link_error(exc):
+                        logger.info(
+                            "Aqua parse failed (%s), fallback no-parse service=%s",
+                            str(exc)[:80],
+                            service,
+                        )
+                        return await _no_parse()
+                    raise
+            if not title_s:
+                raise AquaNotConfiguredError(
+                    "Для Facebook нужны название и цена товара из валидации."
+                )
+            logger.info("Aqua no-parse (facebook or skip parse) service=%s", service)
+            return await _no_parse()
+        return await _no_parse()
     except AquaError as exc:
         raise AquaNotConfiguredError(str(exc)) from exc
 
