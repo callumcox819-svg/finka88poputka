@@ -64,10 +64,15 @@ async def render_campaign_html(
 ) -> tuple[str, str | None]:
     """Собрать HTML для одного получателя рассылки."""
     filename = resolve_template_filename(camp_body)
+    lead = await get_validated_lead_by_email(user_id, to_email)
     if filename is None:
         html = camp_body
     else:
-        html, err = await load_html_template_for_user(user_id, filename)
+        html, err = await load_html_template_for_user(
+            user_id,
+            filename,
+            offer_link=(lead.get("item_link") or "") if lead else "",
+        )
         if err:
             return "", err
 
@@ -78,7 +83,6 @@ async def render_campaign_html(
             "Нет GAG-ссылки для этого продавца. Сначала «🔗 Создать ссылку» во входящем письме.",
         )
 
-    lead = await get_validated_lead_by_email(user_id, to_email)
     ctx = await build_lead_html_ctx(user_id, to_email, lead)
     ctx["LINK"] = gag_link
     html = apply_placeholders(html, link=gag_link, ctx=ctx)

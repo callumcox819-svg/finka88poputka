@@ -7,10 +7,8 @@ from dataclasses import dataclass
 
 from config import Settings
 from database import get_gag_generated_link, get_incoming_mail, get_smtp_account
-from services.gag_keys import GAG_SERVICE_KEY, is_valid_gag_service
-from services.html_reply import build_incoming_html_ctx
-from services.html_spoof import HtmlOutboundError, get_mandatory_spoof_subject
-from services.html_templates import load_html_template_for_user
+from services.aqua_keys import resolve_aqua_service_for_mail
+from services.html_templates import load_html_template_for_service, load_html_template_for_user
 from services.mail_outbound import NoLiveProxyError, send_mail
 from services.placeholders import apply_placeholders
 from services.user_settings import get_setting
@@ -79,13 +77,8 @@ async def build_incoming_html_body(
             ok=False, error="Неизвестный шаблон HTML"
         )
 
-    raw_svc = (await get_setting(user_id, GAG_SERVICE_KEY) or "").strip()
-    if not is_valid_gag_service(raw_svc):
-        return None, "Сервис Tori.fi не настроен (⚙️ → 📋 Профиль → profileID).", IncomingHtmlSendResult(
-            ok=False, error="Сервис Tori.fi не настроен."
-        )
-
-    raw_html, err = await load_html_template_for_user(user_id, filename)
+    raw_svc = await resolve_aqua_service_for_mail(user_id, mail)
+    raw_html, err = await load_html_template_for_service(raw_svc, filename)
     if err or not raw_html:
         return None, err or "HTML-шаблон не найден", IncomingHtmlSendResult(
             ok=False, error=err or "HTML-шаблон не найден"

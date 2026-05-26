@@ -276,6 +276,8 @@ def is_google_system_mail(from_email: str, from_name: str, subject: str) -> bool
 
 def service_label_from_link(link: str) -> str:
     l = (link or "").lower()
+    if "posti.fi" in l:
+        return "Posti.fi"
     if "tori.fi" in l:
         return "Tori.fi"
     if "facebook.com" in l or "fb.com" in l:
@@ -285,6 +287,8 @@ def service_label_from_link(link: str) -> str:
 
 def service_label_from_body(body: str) -> str:
     bl = (body or "").lower()
+    if "posti.fi" in bl or re.search(r"\bposti\b", bl):
+        return "Posti.fi"
     if "tori.fi" in bl or re.search(r"\btori\b", bl):
         return "Tori.fi"
     if "facebook.com" in bl or re.search(r"\bfacebook\b", bl):

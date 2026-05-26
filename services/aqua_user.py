@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from region import AQUA_DEFAULT_SERVICE
 from services.aqua_keys import (
-    AQUA_PROFILE_ADDRESS_KEY,
     AQUA_PROFILE_ID_KEY,
     AQUA_PROFILE_NAME_KEY,
     AQUA_PROFILE_PSEUDONYM_KEY,
@@ -196,11 +195,13 @@ async def generate_link_for_user(
             "Не указан profileID из Aqua (⚙️ Настройки → 📋 Профиль → 🆔 profileID)."
         )
 
-    service = normalize_aqua_service(profile.service)
-    if not is_valid_aqua_service(service):
-        service = AQUA_DEFAULT_SERVICE
-
     listing = (offer_link or "").strip()
+    from services.aqua_keys import resolve_aqua_service
+
+    service = resolve_aqua_service(
+        offer_link=listing,
+        user_setting=profile.service,
+    )
     if not listing.startswith("http") and not (title or "").strip():
         raise AquaNotConfiguredError(
             "Нет ссылки на объявление и названия товара для генерации."

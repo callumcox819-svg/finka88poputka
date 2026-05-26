@@ -1,14 +1,16 @@
-"""HTML-шаблоны по сервису Aqua (Tori.fi / data/HTMLfi)."""
+"""HTML-шаблоны по сервису Aqua (Tori.fi / Posti.fi → data/HTMLfi)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from region import HTML_DATA_DIR
-from services.aqua_keys import GAG_SERVICE_KEY, aqua_service_for_html_dir
-from services.gag_keys import (
-    is_valid_gag_service,
-    normalize_gag_service,
+from services.aqua_keys import (
+    GAG_SERVICE_KEY,
+    aqua_service_for_html_dir,
+    is_valid_aqua_service,
+    normalize_aqua_service,
+    resolve_aqua_service,
 )
 from services.user_settings import get_setting
 
@@ -19,7 +21,7 @@ BACK_FILENAME = "return.html"
 
 
 def html_subdir_for_service(service_code: str | None) -> str | None:
-    if not is_valid_gag_service(service_code):
+    if not is_valid_aqua_service(service_code):
         return None
     sub = aqua_service_for_html_dir(service_code)
     return sub or None
@@ -46,24 +48,24 @@ def list_html_templates_for_service(service_code: str | None) -> list[str]:
 def service_label_for_path(subdir: str) -> str:
     if subdir == "tori_fi":
         return "Tori.fi"
+    if subdir == "posti_fi":
+        return "Posti.fi"
     return subdir
 
 
 def canonical_service_name(service_code: str | None) -> str | None:
-    return normalize_gag_service(service_code)
+    return normalize_aqua_service(service_code)
 
 
-async def load_html_template_for_user(
-    user_id: int, filename: str
+async def load_html_template_for_service(
+    service_code: str | None,
+    filename: str,
 ) -> tuple[str, str | None]:
-    raw = (await get_setting(user_id, GAG_SERVICE_KEY) or "").strip()
-    if not is_valid_gag_service(raw):
-        return (
-            "",
-            "Сервис не настроен. Открой ⚙️ Настройки → 📋 Профиль → 🆔 profileID.",
-        )
-    sub = html_subdir_for_service(raw)
-    p = html_template_path(raw, filename)
+    svc = normalize_aqua_service(service_code)
+    if not is_valid_aqua_service(svc):
+        return "", "Не удалось определить сервис (нужен tori.fi или posti.fi)."
+    sub = html_subdir_for_service(svc)
+    p = html_template_path(svc, filename)
     if not p:
         label = service_label_for_path(sub or "")
         return "", f"Шаблон {filename} не найден для сервиса {label}."
@@ -71,3 +73,22 @@ async def load_html_template_for_user(
         return p.read_text(encoding="utf-8", errors="ignore"), None
     except Exception as e:
         return "", f"Ошибка чтения шаблона: {e}"
+
+
+async def load_html_template_for_user(
+    user_id: int,
+    filename: str,
+    *,
+    service_code: str | None = None,
+    offer_link: str = "",
+) -> tuple[str, str | None]:
+    svc = normalize_aqua_service(service_code)
+    if not svc:
+        raw = (await get_setting(user_id, GAG_SERVICE_KEY) or "").strip()
+        svc = resolve_aqua_service(offer_link=offer_link, user_setting=raw)
+    if not is_valid_aqua_service(svc):
+        return (
+            "",
+            "Сервис не настроен. Нужна ссылка tori.fi или posti.fi в лиде.",
+        )
+    return await load_html_template_for_service(svc, filename)

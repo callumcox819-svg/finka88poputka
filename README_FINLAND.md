@@ -15,8 +15,8 @@
    .venv\Scripts\python scripts\set_commands.py
    ```
 5. **Aqua / GOO API** — User key + Team key + **profileID** из панели Aqua.
-   Домен генерации по умолчанию: `OLD` (`AQUA_GENERATE_DOMAIN=OLD`).
-   Сервис: **`tori_fi`** (`AQUA_DEFAULT_SERVICE=tori_fi`).
+   Сервисы: **`tori_fi`** и **`posti_fi`** (определяются автоматически по `item_link`).
+   HTML: `data/HTMLfi/tori_fi/` и `data/HTMLfi/posti_fi/` (из Finkabot).
 
 ## Быстрый старт (локально)
 
@@ -52,8 +52,8 @@ python bot.py
 | | poputka88-norway | poputka88-finland |
 |---|------------------|-------------------|
 | Маркетплейс | Finn.no | **Tori.fi** |
-| Aqua service | `finn_no` | **`tori_fi`** |
-| HTML | `data/HTMLno/finn_no/` | `data/HTMLfi/tori_fi/` |
+| Aqua service | `finn_no` | **`tori_fi`** + **`posti_fi`** |
+| HTML | `data/HTMLno/finn_no/` | `data/HTMLfi/tori_fi/` + `posti_fi/` |
 | Цена в письмах | kr / NOK | **€ / EUR** |
 | IMAP метки | finn.no | **tori.fi** |
 | Домены валидации | online.no, … | **elisa.fi**, … |

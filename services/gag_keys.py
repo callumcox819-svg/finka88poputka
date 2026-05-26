@@ -16,7 +16,7 @@ from services.aqua_keys import (
 GAG_SERVICE_KEY = "aqua_service"
 GAG_DOMAIN_SLOT_KEY = "aqua_domain_unused"
 
-GAG_SERVICE_CHOICES = (AQUA_DEFAULT_SERVICE,)
+GAG_SERVICE_CHOICES = ("tori_fi", "posti_fi")
 
 
 def gag_service_for_api(code: str | None) -> str:
@@ -49,12 +49,9 @@ def gag_default_version() -> str:
 
 
 def resolve_gag_service(*, offer_link: str, user_setting: str | None) -> str | None:
-    from region import AQUA_DEFAULT_SERVICE
+    from services.aqua_keys import resolve_aqua_service
 
-    if (offer_link or "").lower().find("tori.fi") >= 0:
-        return AQUA_DEFAULT_SERVICE
-    n = normalize_gag_service(user_setting)
-    return n or AQUA_DEFAULT_SERVICE
+    return resolve_aqua_service(offer_link=offer_link, user_setting=user_setting)
 
 
 def parse_gag_domain_slot(raw: str | None) -> None:

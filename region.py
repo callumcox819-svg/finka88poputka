@@ -7,7 +7,7 @@ import os
 BOT_DISPLAY_NAME = "Poputka88 Finland"
 MARKETPLACE_NAME = "Tori.fi"
 
-# Код service в GOO Network API (список сервисов: tori_fi)
+# Коды service в GOO Network API: tori_fi, posti_fi
 AQUA_DEFAULT_SERVICE = (os.getenv("AQUA_DEFAULT_SERVICE", "tori_fi") or "tori_fi").strip()
 GAG_DEFAULT_SERVICE = AQUA_DEFAULT_SERVICE  # совместимость
 
