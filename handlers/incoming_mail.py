@@ -318,9 +318,23 @@ async def cb_mail_reply_html(callback: CallbackQuery, settings: Settings, state:
         cleanup.append(int(msg.message_id))
 
     async def _job() -> None:
-        result = await send_incoming_html(
-            settings, uid, mail_id=mail_id, kind=kind
-        )
+        try:
+            result = await send_incoming_html(
+                settings, uid, mail_id=mail_id, kind=kind
+            )
+        except Exception as exc:
+            err = str(exc)[:400]
+            try:
+                await bot.send_message(
+                    msg.chat.id,
+                    f"❌ {err}",
+                    parse_mode="HTML",
+                    reply_to_message_id=anchor,
+                )
+            except Exception:
+                await bot.send_message(msg.chat.id, f"❌ {err}", parse_mode="HTML")
+            await state.clear()
+            return
         if result.ok and result.html_body:
             ctx = ReplyNotifyCtx(
                 anchor_message_id=anchor,

@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from config import Settings
 from database import get_gag_generated_link, get_incoming_mail, get_smtp_account
 from services.aqua_keys import resolve_aqua_service_for_mail
-from services.html_templates import load_html_template_for_service, load_html_template_for_user
+from services.html_reply import build_incoming_html_ctx
+from services.html_spoof import HtmlOutboundError, get_mandatory_spoof_subject
+from services.html_templates import load_html_template_for_service
 from services.mail_outbound import NoLiveProxyError, send_mail
 from services.placeholders import apply_placeholders
 from services.user_settings import get_setting
