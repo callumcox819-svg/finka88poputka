@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from region import AQUA_DEFAULT_SERVICE
 from services.aqua_keys import (
+    AQUA_PROFILE_ADDRESS_KEY,
     AQUA_PROFILE_ID_KEY,
     AQUA_PROFILE_NAME_KEY,
     AQUA_PROFILE_PSEUDONYM_KEY,
@@ -15,13 +15,14 @@ from services.aqua_keys import (
     _LEGACY_GAG_ADDR,
     _LEGACY_GAG_NAME,
     _LEGACY_GAG_TITLE,
-    get_profile_field,
     aqua_service_label,
     get_aqua_profile_id,
+    get_profile_field,
     get_team_aqua_api_key,
     get_user_aqua_api_key,
     is_valid_aqua_service,
     normalize_aqua_service,
+    resolve_aqua_service,
 )
 from services.aqua_network import AquaError, generate_link_no_parse, generate_link_with_parse
 from services.link_id import link_id_from_generated_url
@@ -196,8 +197,6 @@ async def generate_link_for_user(
         )
 
     listing = (offer_link or "").strip()
-    from services.aqua_keys import resolve_aqua_service
-
     service = resolve_aqua_service(
         offer_link=listing,
         user_setting=profile.service,
