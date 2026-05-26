@@ -20,11 +20,32 @@ from keyboards.main_menu import BTN_STATUS, main_keyboard
 router = Router()
 
 
-@router.message(Command("stat", "status", "statussend"))
-@router.message(F.text == BTN_STATUS)
+@router.message(Command("stat", "status", "statussend", "стат"))
+@router.message(
+    F.text.in_(
+        {
+            BTN_STATUS,
+            "📊 Статус",
+            "/stat",
+            "stat",
+            "Статус",
+            "стат",
+        }
+    )
+)
 async def cmd_status(message: Message, settings: Settings) -> None:
     uid = message.from_user.id
-    active = await get_active_mailing_campaign(uid)
+    try:
+        active = await get_active_mailing_campaign(uid)
+    except OSError as exc:
+        if "PySocks" in str(exc) and "IPv6" in str(exc):
+            await message.answer(
+                "❌ База данных временно недоступна (конфликт SOCKS/Postgres). "
+                "Повторите /stat через несколько секунд.",
+                reply_markup=main_keyboard(),
+            )
+            return
+        raise
     last = await get_last_campaign(uid)
     accounts = await count_smtp_accounts(uid)
     mailing = await count_smtp_mailing_accounts(uid)

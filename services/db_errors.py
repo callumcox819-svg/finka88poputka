@@ -38,6 +38,7 @@ _TRANSIENT_MARKERS = (
     "server closed the connection",
     "pool is closed",
     "target server",
+    "pysocks doesn't support ipv6",
 )
 
 

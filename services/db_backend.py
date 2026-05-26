@@ -291,7 +291,9 @@ async def db_connect():
         if _pool is None:
             await init_db_backend()
         from services.db_errors import is_transient_db_error
+        from services.proxy_smtp import clear_global_socks_proxy
 
+        clear_global_socks_proxy()
         last_exc: Exception | None = None
         retries = max(1, int(os.getenv("DB_CONNECT_RETRIES", "4")))
         for attempt in range(retries):
