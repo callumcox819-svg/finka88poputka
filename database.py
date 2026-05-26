@@ -772,6 +772,21 @@ async def mark_account_smtp_blocked(
         return cur.rowcount > 0
 
 
+async def mark_account_smtp_active(user_id: int, account_id: int) -> bool:
+    """SMTP login OK — вернуть ящик в рассылку (снять старый 🟡 в БД)."""
+    async with db_connect() as db:
+        cur = await db.execute(
+            """
+            UPDATE smtp_accounts
+            SET smtp_enabled = 1, last_error = ''
+            WHERE id = ? AND user_id = ? AND enabled = 1
+            """,
+            (account_id, user_id),
+        )
+        await db.commit()
+        return cur.rowcount > 0
+
+
 async def toggle_smtp_account_enabled(user_id: int, account_id: int) -> int | None:
     """Переключить enabled (IMAP/ящик в боте). Возвращает новое значение 0/1 или None."""
     async with db_connect() as db:

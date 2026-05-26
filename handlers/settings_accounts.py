@@ -320,14 +320,23 @@ async def acc_check_status(callback: CallbackQuery, bot: Bot) -> None:
             blocked = sum(1 for r in results if r.get("smtp_status") == "smtp_blocked")
             invalid = sum(1 for r in results if r.get("smtp_status") == "invalid")
             imap_ok = sum(1 for r in results if r.get("imap_ok"))
+            restored = sum(1 for r in results if r.get("smtp_restored"))
 
             lines = [
                 "✅ <b>Проверка завершена</b>\n",
                 f"🟢 SMTP OK: <b>{ok_smtp}</b>",
+            ]
+            if restored:
+                lines.append(
+                    f"↩ Снова в рассылке (снят старый 🟡): <b>{restored}</b>"
+                )
+            lines.extend(
+                [
                 f"🟡 SMTP блок: <b>{blocked}</b>",
                 f"🔴 неверный пароль (отключены): <b>{invalid}</b>",
                 f"✅ IMAP OK: <b>{imap_ok}</b>\n",
-            ]
+                ]
+            )
             for r in results[:20]:
                 lines.append(r.get("line") or "")
                 for d in r.get("details") or []:

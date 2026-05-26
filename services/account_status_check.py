@@ -8,7 +8,11 @@ from typing import Any
 
 import aiosmtplib
 
-from database import disable_account_fully, mark_account_smtp_blocked
+from database import (
+    disable_account_fully,
+    mark_account_smtp_active,
+    mark_account_smtp_blocked,
+)
 from services.imap_check import check_account_imap
 from services.smtp_block_control import (
     is_invalid_credentials_error,
@@ -65,7 +69,7 @@ async def check_one_account_full(
 
     smtp_st, smtp_err = await _check_smtp_login(account)
     imap_r = await check_account_imap(account)
-
+    smtp_restored = False
     if update_db and aid:
         if smtp_st == "invalid":
             await disable_account_fully(
@@ -75,6 +79,8 @@ async def check_one_account_full(
             await mark_account_smtp_blocked(
                 user_id, aid, short_block_reason(smtp_err) or "smtp blocked"
             )
+        elif smtp_st == "active":
+            smtp_restored = await mark_account_smtp_active(user_id, aid)
 
     imap_ok = bool(imap_r.get("ok"))
     smtp_icon = {
@@ -101,6 +107,7 @@ async def check_one_account_full(
         "line": line,
         "details": details,
         "imap": imap_r,
+        "smtp_restored": smtp_restored,
     }
 
 
