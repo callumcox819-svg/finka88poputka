@@ -8,6 +8,7 @@ from aiogram import Bot
 from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 from services.link_id import format_incoming_link_id
+from utils.text_html import e
 
 logger = logging.getLogger(__name__)
 
