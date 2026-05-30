@@ -280,7 +280,9 @@ async def generate_link_for_user(
 
 
 def ad_id_from_url(url: str) -> str | None:
-    return link_id_from_generated_url(url)
+    from services.link_id import link_id_from_generated_url, slug_from_generated_url
+
+    return slug_from_generated_url(url) or link_id_from_generated_url(url)
 
 
 async def migrate_legacy_gag_keys(user_id: int) -> None:

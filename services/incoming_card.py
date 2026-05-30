@@ -6,7 +6,7 @@ import re
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from services.link_id import link_id_from_generated_url
+from services.link_id import format_incoming_link_id
 from utils.text_html import e
 
 
@@ -125,6 +125,7 @@ def build_incoming_kb(
     imap_uid: str,
     *,
     mail_id: int | None = None,
+    has_link: bool = False,
 ) -> InlineKeyboardMarkup:
     translate_cb = (
         f"mail_translate:{mail_id}" if mail_id else f"mail_translate_stub:{account_id}:{imap_uid}"
@@ -138,8 +139,19 @@ def build_incoming_kb(
     rows = [
         [InlineKeyboardButton(text="🌍 Перевести", callback_data=translate_cb)],
         [InlineKeyboardButton(text="🔗 Создать ссылку", callback_data=link_cb)],
-        [InlineKeyboardButton(text="📝 Написать ещё", callback_data=reply_cb)],
     ]
+    if has_link and mail_id:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🔄 Пересоздать ссылку",
+                    callback_data=f"goo_regen:{mail_id}",
+                )
+            ]
+        )
+    rows.append(
+        [InlineKeyboardButton(text="📝 Написать ещё", callback_data=reply_cb)]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -149,9 +161,16 @@ def build_card_from_mail_row(
     inbox_label: str | None = None,
     translation: str | None = None,
     include_product_extras: bool = True,
+    item_link: str | None = None,
 ) -> tuple[str, InlineKeyboardMarkup]:
     gen = (mail.get("generated_link") or "").strip()
-    link_id = link_id_from_generated_url(gen) if gen else None
+    link_id = None
+    if gen:
+        link_id = format_incoming_link_id(
+            gen,
+            gag_ad_id=(mail.get("gag_ad_id") or "").strip() or None,
+            item_link=(item_link or "").strip() or None,
+        )
     title = (mail.get("product_title") or "").strip() or None
     price = (mail.get("offer_price") or "").strip() or None
     if not include_product_extras:
@@ -174,5 +193,6 @@ def build_card_from_mail_row(
         int(mail["account_id"]),
         str(mail.get("imap_uid") or ""),
         mail_id=int(mail["id"]) if mail.get("id") else None,
+        has_link=bool(gen),
     )
     return text, kb

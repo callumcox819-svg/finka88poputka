@@ -7,7 +7,7 @@ import logging
 from aiogram import Bot
 from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
-from utils.text_html import e
+from services.link_id import format_incoming_link_id
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ def build_link_card_caption(
     service_label: str,
     item_link: str,
     gag_link: str,
+    link_id_display: str | None = None,
 ) -> str:
     svc = _service_label_for_card(service_label)
     link_ad = (item_link or "").strip()
@@ -37,29 +38,46 @@ def build_link_card_caption(
     title = (offer_title or "").strip() or "—"
     price = (offer_price or "").strip() or "—"
     url = (gag_link or "").strip()
+    id_line = ""
+    lid = (link_id_display or "").strip()
+    if lid:
+        id_line = f"🆔 <b>ID:</b> <code>{e(lid)}</code>\n\n"
 
     return (
         f"{svc_line}\n\n"
         f"📌 <b>Название:</b> {e(title)}\n"
         f"💰 <b>Цена:</b> {e(price)}\n"
         f"👤 <b>Профиль:</b> <b>{e(prof)}</b>\n\n"
+        f"{id_line}"
         f"🔗 <b>Ссылка:</b>\n<a href=\"{e(url)}\">{e(url)}</a>"
     )
 
 
-def build_link_card_keyboard(*, lead_id: int | None) -> InlineKeyboardMarkup | None:
+def build_link_card_keyboard(
+    *,
+    lead_id: int | None,
+    mail_id: int | None = None,
+) -> InlineKeyboardMarkup | None:
     if not lead_id or int(lead_id) <= 0:
         return None
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text="💶 Цена",
+                callback_data=f"lead_price:{int(lead_id)}",
+            )
+        ],
+    ]
+    if mail_id:
+        rows.append(
             [
                 InlineKeyboardButton(
-                    text="💶 Цена",
-                    callback_data=f"lead_price:{int(lead_id)}",
+                    text="🔄 Пересоздать ссылку",
+                    callback_data=f"goo_regen:{int(mail_id)}",
                 )
             ]
-        ]
-    )
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _photo_for_telegram(photo_url: str) -> str | BufferedInputFile:
@@ -103,6 +121,8 @@ async def send_generated_link_card(
     link: str,
     anchor_message_id: int,
     lead_id: int | None = None,
+    mail_id: int | None = None,
+    gag_ad_id: str | None = None,
 ) -> int | None:
     """
     Фото + поля + кнопка «💶 Цена». Reply к карточке письма.
@@ -115,8 +135,13 @@ async def send_generated_link_card(
         service_label=service_label,
         item_link=item_link,
         gag_link=link,
+        link_id_display=format_incoming_link_id(
+            link,
+            gag_ad_id=gag_ad_id,
+            item_link=item_link,
+        ),
     )
-    price_kb = build_link_card_keyboard(lead_id=lead_id)
+    price_kb = build_link_card_keyboard(lead_id=lead_id, mail_id=mail_id)
     reply_to = int(anchor_message_id)
     p = (photo_url or "").strip()
     sent_id: int | None = None

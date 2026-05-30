@@ -18,10 +18,10 @@ from services.imap_fetch import service_label_from_link
 from services.gag_network import GAGError
 from services.gag_user import (
     GagNotConfiguredError,
-    ad_id_from_url,
     generate_link_for_lead,
 )
 from services.lead_resolve import resolve_validated_lead
+from services.link_id import link_id_from_generated_url, slug_from_generated_url
 
 
 @dataclass(frozen=True)
@@ -79,7 +79,7 @@ async def create_gag_link_for_incoming(
     except GAGError as exc:
         raise GagNotConfiguredError(str(exc)) from exc
 
-    ad_id = ad_id_from_url(url)
+    ad_id = slug_from_generated_url(url) or link_id_from_generated_url(url) or ""
     canonical_email = str(lead.get("email") or "").strip().lower()
     await propagate_gag_link_for_lead(
         user_id,
@@ -156,7 +156,7 @@ async def regenerate_gag_link_for_lead(
     except GAGError as exc:
         raise GagNotConfiguredError(str(exc)) from exc
 
-    ad_id = ad_id_from_url(url)
+    ad_id = slug_from_generated_url(url) or link_id_from_generated_url(url) or ""
     price = (offer_price if offer_price is not None else lead.get("item_price") or "")
     price = str(price).strip()
     seller = str(lead.get("email") or "").strip().lower()
@@ -177,4 +177,27 @@ async def regenerate_gag_link_for_lead(
         contact_email=seller,
         item_title=(lead.get("item_title") or "").strip(),
         matched_by="regenerate_price",
+    )
+
+
+async def regenerate_gag_link_for_incoming(
+    user_id: int,
+    *,
+    mail_id: int,
+) -> GagLinkResult:
+    """Новая Aqua-ссылка для письма (кнопка «Пересоздать»)."""
+    from database import get_incoming_mail
+
+    mail = await get_incoming_mail(int(mail_id), user_id)
+    if not mail:
+        raise GagNotConfiguredError("Письмо не найдено.")
+    lead_id = mail.get("lead_id")
+    if lead_id:
+        return await regenerate_gag_link_for_lead(user_id, int(lead_id))
+    return await create_gag_link_for_incoming(
+        user_id,
+        contact_email=(mail.get("from_email") or "").strip(),
+        lead_id=None,
+        incoming_mail_id=int(mail_id),
+        subject=(mail.get("subject") or ""),
     )

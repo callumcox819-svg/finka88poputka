@@ -95,6 +95,7 @@ async def _lead_meta(
             "service_label": svc,
             "photo_url": "",
             "offer_price": "",
+            "item_link": "",
         }
     lead = resolved.lead
     link = await _lead_link(lead)
@@ -109,6 +110,7 @@ async def _lead_meta(
         "service_label": svc,
         "photo_url": (lead.get("item_photo") or "").strip(),
         "offer_price": price,
+        "item_link": link,
     }
 
 
@@ -164,6 +166,7 @@ async def _notify_incoming(
                     str(lead.get("item_price") or ""),
                     str(lead.get("item_currency") or lead.get("currency") or ""),
                 ),
+                "item_link": link,
             }
 
     reply_to = await get_incoming_thread_reply_message_id(
@@ -173,6 +176,7 @@ async def _notify_incoming(
         mail,
         inbox_label=inbox_label or None,
         include_product_extras=is_first_from_sender,
+        item_link=(meta.get("item_link") or "").strip() or None,
     )
     try:
         msg = await bot.send_message(
