@@ -15,6 +15,7 @@ import aiosmtplib
 from config import Settings
 from services.encoding import TransferEncoding, resolve_encoding
 from services.proxy_smtp import send_via_proxy
+from services.subject_offer import sanitize_email_subject
 
 EncodingName = Literal["7bit", "quoted-printable", "base64"]
 
@@ -30,11 +31,11 @@ def build_message(
     reply_to: str | None = None,
 ) -> EmailMessage:
     msg = EmailMessage(policy=SMTP)
-    msg["From"] = mail_from
-    msg["To"] = to_addr
-    msg["Subject"] = subject
+    msg["From"] = sanitize_email_subject(mail_from)
+    msg["To"] = sanitize_email_subject(to_addr)
+    msg["Subject"] = sanitize_email_subject(subject)
     if reply_to:
-        msg["Reply-To"] = reply_to
+        msg["Reply-To"] = sanitize_email_subject(reply_to)
 
     subtype = "html" if is_html else "plain"
     charset = "us-ascii" if encoding == "7bit" else "utf-8"
@@ -50,15 +51,16 @@ def build_message(
 
 
 def format_from_header(account: dict[str, Any]) -> str:
-    name = (account.get("sender_name") or "").strip()
-    email = account["email"]
+    name = sanitize_email_subject(account.get("sender_name") or "")
+    email = (account.get("email") or "").strip()
     if name:
         return f'"{name}" <{email}>'
     return email
 
 
 def format_from_with_name(email: str, display_name: str | None) -> str:
-    name = (display_name or "").strip()
+    name = sanitize_email_subject(display_name or "")
+    email = (email or "").strip()
     if name:
         return f'"{name}" <{email}>'
     return email

@@ -7,6 +7,7 @@ from services.user_settings import (
     SPOOF_SUBJECT_KEY,
     get_setting,
 )
+from services.subject_offer import sanitize_email_subject
 
 SPOOFING_KEY = "spoofing"
 
@@ -45,7 +46,7 @@ async def get_mandatory_spoof_subject(user_id: int) -> str:
         raise HtmlOutboundError(
             "Для HTML задайте тему в ⚙️ Настройки → 👤 Имя для спуфинга → ✅ Установить тему."
         )
-    return subj[:140]
+    return sanitize_email_subject(subj)[:140]
 
 
 async def prepare_html_outbound(

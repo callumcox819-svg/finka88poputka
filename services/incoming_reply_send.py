@@ -10,10 +10,11 @@ from services.mail_outbound import NoLiveProxyError, send_mail
 from services.outbound_lang import seller_outbound_text_error
 from services.presets import expand_spintax
 from services.reply_notify import ReplyNotifyCtx
+from services.subject_offer import sanitize_email_subject
 
 
 def _reply_subject(mail: dict) -> str:
-    subj = (mail.get("subject") or "").strip()
+    subj = sanitize_email_subject(mail.get("subject") or "")
     if not subj:
         return "Re:"
     if re.match(r"^re:\s*", subj, flags=re.I):
