@@ -80,7 +80,7 @@ async def render_campaign_html(
     if not gag_link:
         return (
             "",
-            "Нет GAG-ссылки для этого продавца. Сначала «🔗 Создать ссылку» во входящем письме.",
+            "Нет Aqua-ссылки для этого продавца. Сначала «🔗 Создать ссылку» во входящем письме.",
         )
 
     ctx = await build_lead_html_ctx(user_id, to_email, lead)

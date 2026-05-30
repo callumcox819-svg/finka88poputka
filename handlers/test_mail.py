@@ -136,7 +136,7 @@ def _menu_text(
     fixtures = load_test_fixtures()
     fx_lines = ""
     if fixtures:
-        fx_lines = "\n<b>Тест-товары (OFFER / фото / GAG):</b>\n"
+        fx_lines = "\n<b>Тест-товары (OFFER / фото / Aqua):</b>\n"
         for i, fx in enumerate(fixtures[:5]):
             fx_lines += f"{i + 1}. <code>{e(fixture_label(fx))}</code>\n"
 
@@ -162,7 +162,7 @@ def _menu_text(
     return (
         "🧪 <b>Тест маил</b>\n\n"
         f"{from_line}{proxy_line}{imap_line}\n"
-        "▶️ Отправка: тема = товар из JSON, лид на email получателя (GAG/фото).\n"
+        "▶️ Отправка: тема = товар из JSON, лид на email получателя (Aqua/фото).\n"
         f"{fx_lines}\n"
         f"<b>Получатели ({len(emails)}):</b>\n{lines}\n"
         "Ответ в Gmail → карточка в боте только через IMAP (тот же ящик, что слал письмо)."
@@ -304,7 +304,7 @@ async def _send_test_one(
         photo = "📷" if (fixture.get("item_photo") or "").strip() else ""
         price = (fixture.get("item_price") or "").strip()
         lead_hint = (
-            f"\n🧾 Лид #{lead_id} (фото/цена/GAG из JSON) {photo}"
+            f"\n🧾 Лид #{lead_id} (фото/цена/Aqua из JSON) {photo}"
             + (f" · <code>{e(price)}</code>" if price else "")
         )
     elif lead_err:

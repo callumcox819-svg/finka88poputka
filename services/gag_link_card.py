@@ -1,4 +1,4 @@
-"""Карточка GAG-ссылки — reply к письму (оформление как happy88)."""
+"""Карточка Aqua-ссылки — reply к письму."""
 
 from __future__ import annotations
 
