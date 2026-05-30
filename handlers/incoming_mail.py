@@ -606,13 +606,35 @@ async def cb_goo_mail(callback: CallbackQuery) -> None:
         if (existing or "").strip():
             await inherit_incoming_gag_link(mail_id, uid, contact)
             mail2 = await get_incoming_mail(mail_id, uid)
-            if mail2 and msg:
-                await _refresh_mail_card(bot, msg.chat.id, msg, mail2, user_id=uid)
+            if not mail2 or not msg:
+                return
+            await _refresh_mail_card(bot, msg.chat.id, msg, mail2, user_id=uid)
+            link = (mail2.get("generated_link") or "").strip()
+            if not link:
                 await bot.send_message(
                     msg.chat.id,
-                    "ℹ️ Ссылка для этого продавца уже была — использую её.",
+                    "ℹ️ Ссылка для этого продавца уже была, но не найдена в БД.",
                     reply_to_message_id=msg.message_id,
                 )
+                return
+            profile = await load_gag_profile(uid)
+            item_link = await _item_link_for_mail(uid, mail2)
+            lead_id = mail2.get("lead_id")
+            await send_generated_link_card(
+                bot,
+                msg.chat.id,
+                offer_title=(mail2.get("product_title") or "").strip(),
+                offer_price=(mail2.get("offer_price") or "").strip(),
+                photo_url=(mail2.get("photo_url") or "").strip(),
+                profile_title=profile.profile_id,
+                service_label=(mail2.get("service_label") or "").strip(),
+                item_link=item_link,
+                link=link,
+                anchor_message_id=int(msg.message_id),
+                lead_id=int(lead_id) if lead_id else None,
+                mail_id=mail_id,
+                gag_ad_id=(mail2.get("gag_ad_id") or "").strip() or None,
+            )
             return
         try:
             await create_gag_link_for_incoming(
