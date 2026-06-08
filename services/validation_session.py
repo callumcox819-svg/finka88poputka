@@ -246,7 +246,18 @@ async def _worker(bot: Bot, settings: Settings, session: ValidationSession) -> N
     try:
         ctx = await ValidemailWorkerContext.create(settings, session.user_id)
         if not ctx:
-            await bot.send_message(session.chat_id, "❌ Нет ключей ValidEmail или доменов.")
+            err = "❌ Нет ключей ValidEmail или доменов в ⚙️ Настройки → 📊 Приоритет отправки."
+            session.stats.fatal_reason = "no_config"
+            await bot.send_message(session.chat_id, err)
+            if session.status_message_id:
+                try:
+                    await bot.edit_message_text(
+                        err,
+                        chat_id=session.chat_id,
+                        message_id=session.status_message_id,
+                    )
+                except Exception:
+                    pass
             return
         session.keys_line = ctx.keys_line
         n_parallel = validation_parallel_workers(ctx.pool.key_count)
