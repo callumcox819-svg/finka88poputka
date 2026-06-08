@@ -131,6 +131,43 @@ def send_message_sync(
                 pass
 
 
+def send_batch_sync(
+    *,
+    proxy: dict[str, Any],
+    smtp_host: str,
+    smtp_port: int,
+    login: str,
+    password: str,
+    messages: list[EmailMessage],
+    timeout: int = 35,
+) -> None:
+    """Несколько писем за одно SMTP-подключение через SOCKS5."""
+    if not messages:
+        return
+    srv = _smtp_over_proxy(
+        proxy,
+        smtp_host=smtp_host,
+        smtp_port=smtp_port,
+        login=login,
+        password=password,
+        timeout=timeout,
+    )
+    try:
+        if login and password:
+            srv.login(login, password)
+        for message in messages:
+            srv.send_message(message)
+    finally:
+        try:
+            srv.quit()
+        except Exception:
+            try:
+                if srv.sock:
+                    srv.sock.close()
+            except Exception:
+                pass
+
+
 async def send_via_proxy(
     proxy: dict[str, Any],
     *,
@@ -141,10 +178,26 @@ async def send_via_proxy(
     mail_from: str,
     to_addr: str,
     message: EmailMessage,
+    parallel: bool = False,
 ) -> None:
     timeout = max(20, min(60, int(os.getenv("MAIL_SMTP_TIMEOUT_SEC", "35"))))
 
     async def _run() -> None:
+        if parallel:
+            clear_global_socks_proxy()
+            await asyncio.to_thread(
+                send_message_sync,
+                proxy=proxy,
+                smtp_host=smtp_host,
+                smtp_port=smtp_port,
+                login=login,
+                password=password,
+                mail_from=mail_from,
+                to_addr=to_addr,
+                message=message,
+                timeout=timeout,
+            )
+            return
         async with proxy_smtp_context(proxy):
             await asyncio.to_thread(
                 send_message_sync,
@@ -160,3 +213,47 @@ async def send_via_proxy(
             )
 
     await asyncio.wait_for(_run(), timeout=timeout + 15)
+
+
+async def send_batch_via_proxy(
+    proxy: dict[str, Any],
+    *,
+    smtp_host: str,
+    smtp_port: int,
+    login: str,
+    password: str,
+    messages: list[EmailMessage],
+    parallel: bool = False,
+) -> None:
+    if not messages:
+        return
+    timeout = max(20, min(60, int(os.getenv("MAIL_MAILING_TIMEOUT_SEC", "28"))))
+
+    async def _run() -> None:
+        if parallel:
+            clear_global_socks_proxy()
+            await asyncio.to_thread(
+                send_batch_sync,
+                proxy=proxy,
+                smtp_host=smtp_host,
+                smtp_port=smtp_port,
+                login=login,
+                password=password,
+                messages=messages,
+                timeout=timeout,
+            )
+            return
+        async with proxy_smtp_context(proxy):
+            await asyncio.to_thread(
+                send_batch_sync,
+                proxy=proxy,
+                smtp_host=smtp_host,
+                smtp_port=smtp_port,
+                login=login,
+                password=password,
+                messages=messages,
+                timeout=timeout,
+            )
+
+    batch_timeout = timeout + 15 + max(0, len(messages) - 1) * 5
+    await asyncio.wait_for(_run(), timeout=batch_timeout)

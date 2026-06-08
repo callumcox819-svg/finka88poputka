@@ -98,7 +98,7 @@ async def settings_open_cb(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("ref_toggle:"))
 async def ref_toggle(callback: CallbackQuery) -> None:
     key = (callback.data or "").split(":", 1)[1].strip()
-    if key not in {"smart_mode", "spoofing", "block_control"}:
+    if key not in {"smart_mode", "spoofing", "block_control", "fast_mailing"}:
         return await callback.answer()
     await toggle_bool(callback.from_user.id, key)
     kb = await settings_kb_for(callback.from_user.id)
@@ -193,13 +193,21 @@ async def priority_reset(callback: CallbackQuery, state: FSMContext) -> None:
 async def settings_timings(callback: CallbackQuery, state: FSMContext, settings: Settings) -> None:
     await state.clear()
     timing = await load_timing(callback.from_user.id, settings.send_delay_sec)
+    fast_on = (await get_toggle_flags(callback.from_user.id)).get("fast_mailing", False)
+    fast_note = (
+        "\n\n⚡ <b>Быстрая рассылка включена</b> — тайминги игнорируются "
+        "(1 прокси, без пауз, пачки с ящика)."
+        if fast_on
+        else ""
+    )
     await cq_edit_text(
         callback,
         "⏱ <b>Тайминги рассылки</b>\n\n"
         f"MIN: <code>{timing['min']}</code> сек\n"
         f"MAX: <code>{timing['max']}</code> сек\n"
         f"Пачка с ящика: <code>{timing['batch_size']}</code> писем\n\n"
-        "<i>Формат: <code>MIN MAX ПАЧКА</code> (пример: <code>2 4 5</code>)</i>",
+        "<i>Формат: <code>MIN MAX ПАЧКА</code> (пример: <code>2 4 5</code>)</i>"
+        f"{fast_note}",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="✏️ Изменить тайминг", callback_data="timings_edit")],

@@ -14,7 +14,7 @@ import aiosmtplib
 
 from config import Settings
 from services.encoding import TransferEncoding, resolve_encoding
-from services.proxy_smtp import send_via_proxy
+from services.proxy_smtp import send_batch_via_proxy, send_via_proxy
 from services.subject_offer import sanitize_email_subject
 
 EncodingName = Literal["7bit", "quoted-printable", "base64"]
@@ -79,6 +79,7 @@ async def send_one(
     from_display_name: str | None = None,
     use_tls: bool | None = None,
     proxy: dict[str, Any] | None = None,
+    parallel: bool = False,
 ) -> EncodingName:
     enc = resolve_encoding(transfer, body, is_html=is_html)
 
@@ -120,6 +121,7 @@ async def send_one(
             mail_from=mail_from,
             to_addr=to_addr,
             message=message,
+            parallel=parallel,
         )
         return enc
 
@@ -138,3 +140,58 @@ async def send_one(
         tls_context=tls_ctx,
     )
     return enc
+
+
+async def send_batch_one(
+    settings: Settings,
+    *,
+    account: dict[str, Any],
+    items: list[tuple[str, str, str, bool]],
+    transfer: TransferEncoding = TransferEncoding.AUTO,
+    from_display_name: str | None = None,
+    proxy: dict[str, Any] | None = None,
+    parallel: bool = False,
+) -> list[EncodingName]:
+    """
+    items: (to_addr, subject, body, is_html) — одно SMTP-подключение.
+    """
+    del settings
+    if not items or not proxy:
+        return []
+
+    if from_display_name:
+        mail_from = format_from_with_name(account["email"], from_display_name)
+    else:
+        mail_from = format_from_header(account)
+
+    host = account["smtp_host"]
+    port = int(account["smtp_port"])
+    user = account["email"]
+    password = account["password"]
+
+    messages: list[EmailMessage] = []
+    encodings: list[EncodingName] = []
+    for to_addr, subject, body, is_html in items:
+        enc = resolve_encoding(transfer, body, is_html=is_html)
+        encodings.append(enc)
+        messages.append(
+            build_message(
+                mail_from=mail_from,
+                to_addr=to_addr,
+                subject=subject,
+                body=body,
+                is_html=is_html,
+                encoding=enc,
+            )
+        )
+
+    await send_batch_via_proxy(
+        proxy,
+        smtp_host=host,
+        smtp_port=port,
+        login=user or "",
+        password=password or "",
+        messages=messages,
+        parallel=parallel,
+    )
+    return encodings

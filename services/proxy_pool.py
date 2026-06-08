@@ -37,6 +37,14 @@ def proxy_to_dict(row: dict) -> dict:
     }
 
 
+async def pick_first_proxy(user_id: int) -> dict | None:
+    """Первый живой прокси — для быстрой рассылки (без ротации)."""
+    rows = await list_sendable_proxies(user_id)
+    if not rows:
+        return None
+    return proxy_to_dict(rows[0])
+
+
 async def pick_next_proxy(user_id: int) -> dict | None:
     rows = await list_sendable_proxies(user_id)
     if not rows:

@@ -20,7 +20,14 @@ from services.subject_offer import mailing_subject_for_recipient, offer_title_fo
 from services.encoding import TransferEncoding
 from services.mailing_timing import load_timing
 from services.html_spoof import HtmlOutboundError
-from services.mail_outbound import NoLiveProxyError, live_proxy_count, send_mail
+from services.mail_outbound import (
+    FAST_MAILING_BATCH,
+    FAST_MAILING_PARALLEL,
+    NoLiveProxyError,
+    live_proxy_count,
+    send_mail,
+    send_mail_batch,
+)
 from services.presets import pick_random_smart_preset
 from services.smtp_block_control import handle_campaign_send_error
 from services.task_control import (
@@ -35,6 +42,146 @@ logger = logging.getLogger(__name__)
 
 _active: set[int] = set()
 _account_index: dict[int, int] = {}
+
+
+async def _prepare_outbound(
+    *,
+    user_id: int,
+    camp: dict,
+    email: str,
+    is_html: bool,
+    smart_on: bool,
+) -> tuple[str, str] | tuple[None, str]:
+    base_body = camp["body"]
+    offer_title = await offer_title_for_recipient(user_id, email)
+    subject = await mailing_subject_for_recipient(user_id, email)
+    body = base_body
+
+    if is_html:
+        body, html_err = await render_campaign_html(
+            user_id, camp_body=body, to_email=email
+        )
+        if html_err:
+            return None, html_err
+    else:
+        if smart_on:
+            smart_body = await pick_random_smart_preset(user_id, offer_title)
+            if smart_body:
+                body = smart_body
+        else:
+            body = apply_offer_to_text(body, offer_title)
+
+    return subject, body
+
+
+async def _send_fast_wave(
+    settings: Settings,
+    *,
+    bot: Bot,
+    chat_id: int,
+    user_id: int,
+    campaign_id: int,
+    camp: dict,
+    accounts: list[dict],
+    is_html: bool,
+    transfer: TransferEncoding,
+    smart_on: bool,
+) -> bool:
+    """
+    Быстрая рассылка: один прокси, пачки с ящика, параллельно.
+    Возвращает True если нужно остановить кампанию.
+    """
+    per_acc = FAST_MAILING_BATCH
+    wave_limit = max(per_acc, len(accounts) * per_acc)
+    batch = await pending_recipients(campaign_id, limit=wave_limit)
+    if not batch:
+        return False
+
+    chunks: list[tuple[dict, list[str]]] = []
+    idx = 0
+    acc_i = 0
+    while idx < len(batch):
+        acc = accounts[acc_i % len(accounts)]
+        chunk = batch[idx : idx + per_acc]
+        if chunk:
+            chunks.append((acc, chunk))
+        idx += len(chunk)
+        acc_i += 1
+
+    sem = asyncio.Semaphore(FAST_MAILING_PARALLEL)
+
+    async def _send_chunk(account: dict, emails: list[str]) -> None:
+        async with sem:
+            jobs: list[tuple[str, str, str]] = []
+            for email in emails:
+                prepared = await _prepare_outbound(
+                    user_id=user_id,
+                    camp=camp,
+                    email=email,
+                    is_html=is_html,
+                    smart_on=smart_on,
+                )
+                subject, body = prepared
+                if subject is None:
+                    await mark_failed(campaign_id, email, body)
+                    continue
+                jobs.append((email, subject, body))
+
+            if not jobs:
+                return
+
+            try:
+                await send_mail_batch(
+                    settings,
+                    user_id,
+                    items=jobs,
+                    account=account,
+                    is_html=is_html,
+                    transfer=transfer,
+                    fast_mailing=True,
+                    parallel=True,
+                )
+                for email, _subj, _body in jobs:
+                    await mark_sent(campaign_id, email)
+                    logger.info("fast sent %s via %s", email, account.get("email"))
+            except (NoLiveProxyError, HtmlOutboundError) as exc:
+                raise exc
+            except Exception as exc:
+                err = str(exc)[:400]
+                for email, _subj, _body in jobs:
+                    await mark_failed(campaign_id, email, err)
+                logger.warning(
+                    "fast fail batch via %s: %s",
+                    account.get("email"),
+                    err,
+                )
+                action = await handle_campaign_send_error(
+                    user_id,
+                    int(account["id"]),
+                    err,
+                    bot=bot,
+                    chat_id=chat_id,
+                )
+                if action in {"removed_mailing", "disabled_full"}:
+                    raise RuntimeError("smtp_account_disabled")
+
+    try:
+        await asyncio.gather(*[_send_chunk(acc, em) for acc, em in chunks])
+    except (NoLiveProxyError, HtmlOutboundError) as exc:
+        await set_campaign_status(campaign_id, "paused")
+        await bot.send_message(chat_id, f"❌ {exc}")
+        return True
+    except RuntimeError:
+        fresh = await list_smtp_mailing_accounts(user_id, with_secrets=True)
+        if not fresh and not (settings.smtp_host and settings.smtp_user):
+            await set_campaign_status(campaign_id, "paused")
+            await bot.send_message(
+                chat_id,
+                "❌ Все SMTP-аккаунты отключены. Рассылка остановлена.",
+            )
+            return True
+
+    return False
 
 
 def campaign_task_active(campaign_id: int) -> bool:
@@ -97,9 +244,19 @@ async def run_campaign(
 
         proxy_line = ""
         if proxy_total:
-            proxy_line = f"\nПрокси SOCKS5: {proxy_live}/{proxy_total} (все живые по очереди)"
+            if fast_on:
+                proxy_line = f"\nПрокси SOCKS5: 1 из {proxy_live}/{proxy_total} (быстрая рассылка)"
+            else:
+                proxy_line = f"\nПрокси SOCKS5: {proxy_live}/{proxy_total} (все живые по очереди)"
         smart_on = await get_bool(user_id, "smart_mode")
+        fast_on = await get_bool(user_id, "fast_mailing")
         smart_line = "\n🟢 Умный режим: подставляются умные пресеты." if smart_on else ""
+        fast_line = (
+            f"\n⚡ <b>Быстрая рассылка</b>: 1 прокси, до {FAST_MAILING_BATCH} писем/ящик, "
+            f"параллельно ×{FAST_MAILING_PARALLEL}, без пауз."
+            if fast_on
+            else ""
+        )
         html_line = ""
         if is_html:
             if not proxy_total:
@@ -115,7 +272,8 @@ async def run_campaign(
         await bot.send_message(
             chat_id,
             f"Рассылка #{campaign_id} запущена.\n"
-            f"SMTP-аккаунтов: {len(accounts) or 'из .env (1)'}{proxy_line}{smart_line}{html_line}",
+            f"SMTP-аккаунтов: {len(accounts) or 'из .env (1)'}{proxy_line}{smart_line}{fast_line}{html_line}",
+            parse_mode="HTML" if fast_on else None,
         )
 
         while True:
@@ -134,14 +292,22 @@ async def run_campaign(
                 break
 
             timing = await load_timing(user_id, settings.send_delay_sec)
-            min_delay = float(timing.get("min", settings.send_delay_sec))
-            max_delay = float(timing.get("max", min_delay))
-            if max_delay < min_delay:
-                max_delay = min_delay
-            burst_size = max(1, min(8, int(timing.get("batch_size", 3))))
+            if fast_on:
+                min_delay = 0.0
+                max_delay = 0.0
+                burst_size = FAST_MAILING_BATCH
+            else:
+                min_delay = float(timing.get("min", settings.send_delay_sec))
+                max_delay = float(timing.get("max", min_delay))
+                if max_delay < min_delay:
+                    max_delay = min_delay
+                burst_size = max(1, min(8, int(timing.get("batch_size", 3))))
 
             iter_started = time.monotonic()
-            batch = await pending_recipients(campaign_id, limit=burst_size)
+            batch = await pending_recipients(
+                campaign_id,
+                limit=max(burst_size, len(accounts) * burst_size) if fast_on else burst_size,
+            )
             if not batch:
                 await set_campaign_status(campaign_id, "done")
                 camp = await get_campaign(campaign_id, user_id)
@@ -162,6 +328,34 @@ async def run_campaign(
                     "Добавьте почты или отключите блокировки и проверьте аккаунты.",
                 )
                 break
+
+            if fast_on and accounts:
+                if should_stop_campaign(campaign_id):
+                    burst_stopped = True
+                else:
+                    burst_stopped = await _send_fast_wave(
+                        settings,
+                        bot=bot,
+                        chat_id=chat_id,
+                        user_id=user_id,
+                        campaign_id=campaign_id,
+                        camp=camp,
+                        accounts=accounts,
+                        is_html=is_html,
+                        transfer=transfer,
+                        smart_on=smart_on,
+                    )
+                if burst_stopped:
+                    if should_stop_campaign(campaign_id):
+                        await set_campaign_status(campaign_id, "paused")
+                        camp = await get_campaign(campaign_id, user_id)
+                        await bot.send_message(
+                            chat_id,
+                            f"Рассылка #{campaign_id} остановлена.\n"
+                            f"Отправлено: {camp['sent']}, ошибок: {camp['failed']}.",
+                        )
+                    break
+                continue
 
             account = None
             if accounts:
@@ -253,7 +447,9 @@ async def run_campaign(
                     )
                 break
 
-            # Пауза на пачку: случайно MIN–MAX сек (как happy88), не фикс MIN на каждое письмо.
+            # Пауза между пачками (в быстром режиме — 0).
+            if fast_on:
+                continue
             pace = random.uniform(min_delay, max_delay)
             wait_more = pace - (time.monotonic() - iter_started)
             if wait_more > 0:

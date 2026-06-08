@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from services.db_backend import db_connect
 
-TOGGLE_KEYS = frozenset({"smart_mode", "spoofing", "block_control"})
+TOGGLE_KEYS = frozenset({"smart_mode", "spoofing", "block_control", "fast_mailing"})
 SPOOF_SUBJECT_KEY = "spoof_subject"
 SPOOF_FROM_NAME_KEY = "spoof_from_name"
 
@@ -53,4 +53,5 @@ async def get_toggle_flags(user_id: int) -> dict[str, bool]:
         "smart_mode": await get_bool(user_id, "smart_mode", False),
         "spoofing": await get_bool(user_id, "spoofing", False),
         "block_control": await get_bool(user_id, "block_control", False),
+        "fast_mailing": await get_bool(user_id, "fast_mailing", False),
     }

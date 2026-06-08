@@ -35,6 +35,12 @@ def settings_menu_kb(flags: dict[str, bool]) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text=dot(flags.get("fast_mailing", False), "Быстрая\nрассылка"),
+                    callback_data="ref_toggle:fast_mailing",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text=dot(flags.get("block_control", False), "Контроль\nблокировок"),
                     callback_data="ref_toggle:block_control",
                 ),
