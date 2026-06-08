@@ -103,7 +103,7 @@ async def _proxy_hint(user_id: int) -> str:
         return "🌐 <b>Прокси обязательны</b> для любой отправки — добавьте SOCKS5.\n"
     live = await live_proxy_count(user_id)
     if live < 1:
-        return "⚠️ Прокси есть, но <b>нет живых</b> — отправка не пойдёт.\n"
+        return "⚠️ Список прокси пуст — отправка не пойдёт.\n"
     return f"🌐 Прокси: <b>{live}</b> живых (вся отправка через SOCKS5).\n"
 
 
@@ -518,7 +518,7 @@ async def cb_tm_send(callback: CallbackQuery, state: FSMContext, settings: Setti
 
     if await user_has_proxies(uid) and await live_proxy_count(uid) < 1:
         return await callback.answer(
-            "Нет живых прокси (HTML не уйдёт). Проверьте 🌐 Прокси.",
+            "Список прокси пуст. Добавьте SOCKS5 в 🌐 Прокси.",
             show_alert=True,
         )
 

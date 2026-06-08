@@ -246,6 +246,21 @@ def is_own_outgoing_copy(from_email: str, account_email: str, subject: str) -> b
     return not sl.startswith(("re:", "fwd:", "aw:", "wg:", "sv:", "antw:", "ré:"))
 
 
+def is_delivery_bounce_mail(from_email: str, subject: str) -> bool:
+    """Отбой доставки (postmaster / mailer-daemon) — не ответ продавца."""
+    f = (from_email or "").strip().lower()
+    s = (subject or "").strip().lower()
+    if "mailer-daemon" in f or "postmaster" in f:
+        return True
+    if "delivery status notification" in s:
+        return True
+    if "ei voitu toimittaa" in s:
+        return True
+    if "could not be delivered" in s or "undeliverable" in s:
+        return True
+    return False
+
+
 def is_google_system_mail(from_email: str, from_name: str, subject: str) -> bool:
     f = (from_email or "").strip().lower()
     name = (from_name or "").strip().lower()

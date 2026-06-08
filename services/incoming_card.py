@@ -6,6 +6,7 @@ import re
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from services.imap_fetch import is_delivery_bounce_mail
 from services.link_id import format_incoming_link_id
 from utils.text_html import e
 
@@ -163,7 +164,13 @@ def build_card_from_mail_row(
     include_product_extras: bool = True,
     item_link: str | None = None,
 ) -> tuple[str, InlineKeyboardMarkup]:
+    is_bounce = is_delivery_bounce_mail(
+        (mail.get("from_email") or "").strip(),
+        (mail.get("subject") or "").strip(),
+    )
     gen = (mail.get("generated_link") or "").strip()
+    if is_bounce:
+        gen = ""
     link_id = None
     if gen:
         link_id = format_incoming_link_id(

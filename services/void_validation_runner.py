@@ -65,24 +65,45 @@ class ValidemailWorkerContext:
             )
         except ValueError:
             return None
-        parallel = validation_parallel_workers(pool.key_count)
+        parallel = validation_parallel_workers(
+            pool.key_count,
+            per_key=per_key,
+            max_concurrent=pool.max_concurrent,
+        )
         keys_line = (
             f"🔑 Ключей API: <b>{pool.key_count}</b> · "
             f"потоков: <b>{parallel}</b> · "
-            f"до <b>{pool.key_count * per_key}</b> запросов/ключ"
+            f"до <b>{pool.max_concurrent}</b> запросов параллельно"
         )
         return cls(pool=pool, domains=domains, per_key=per_key, keys_line=keys_line)
 
 
-def validation_parallel_workers(key_count: int) -> int:
-    """Сколько объявлений проверяем параллельно (≈ число ключей, как happy88)."""
-    n = int(key_count or 0)
-    if n <= 0:
-        return 1
+def validation_parallel_workers(
+    key_count: int,
+    *,
+    per_key: int = 4,
+    max_concurrent: int | None = None,
+) -> int:
+    """
+    Сколько объявлений проверяем параллельно.
+
+    Ограничено ёмкостью пула (ключи × слотов/ключ), чтобы не ловить 429.
+    """
+    keys = max(1, int(key_count or 0))
+    slots = max(1, int(per_key or 0))
+    pool_cap = max(keys, int(max_concurrent or 0) or keys * slots)
+
     raw = os.getenv("VALIDEMAIL_PARALLEL_WORKERS", "").strip()
     if raw.isdigit():
-        return max(1, min(n, int(raw)))
-    return max(1, min(n, 5))
+        return max(1, min(pool_cap, int(raw)))
+
+    factor_raw = os.getenv("VALIDEMAIL_PARALLEL_FACTOR", "2").strip()
+    try:
+        factor = max(1.0, float(factor_raw))
+    except ValueError:
+        factor = 2.0
+    default = max(keys, min(pool_cap, int(keys * factor)))
+    return max(1, min(pool_cap, default))
 
 
 def _enrich_export_item(item: dict[str, Any], email: str) -> dict[str, Any]:

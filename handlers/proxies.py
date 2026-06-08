@@ -42,31 +42,31 @@ class ProxyAddStates(StatesGroup):
     waiting_for_list = State()
 
 
-def _status_emoji(is_active: int | None) -> str:
+def _status_emoji(is_active: int | None, *, last_error: str | None = None) -> str:
     if is_active == 1:
         return "🟢"
-    if is_active == 0:
-        return "🔴"
+    if (last_error or "").strip():
+        return "🟡"
     return "🟡"
 
 
 def _proxy_counts(proxies: list[dict]) -> tuple[int, int, int]:
-    ok = unk = bad = 0
+    ok = unk = warn = 0
     for p in proxies:
         st = p.get("is_active")
         if st == 1:
             ok += 1
-        elif st == 0:
-            bad += 1
+        elif (p.get("last_error") or "").strip():
+            warn += 1
         else:
             unk += 1
-    return ok, unk, bad
+    return ok, unk, warn
 
 
 def _proxies_kb(proxies: list[dict]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for p in proxies:
-        st = _status_emoji(p.get("is_active"))
+        st = _status_emoji(p.get("is_active"), last_error=p.get("last_error"))
         ptype = (p.get("proxy_type") or "socks5").lower()
         label = f"{st} {ptype} {p['host']}:{p['port']}"
         rows.append(
@@ -104,14 +104,14 @@ def _proxies_kb(proxies: list[dict]) -> InlineKeyboardMarkup:
 
 async def render_proxy_menu(target: Message | CallbackQuery, user_id: int) -> None:
     proxies = await list_proxies(user_id)
-    ok_n, unk_n, bad_n = _proxy_counts(proxies)
+    ok_n, unk_n, warn_n = _proxy_counts(proxies)
     text = (
         "🌐 <b>Прокси (SOCKS5)</b>\n\n"
         f"Всего: {len(proxies)}\n"
-        f"🟢 OK: {ok_n} · 🟡 не проверен: {unk_n} · 🔴 мёртв: {bad_n}\n\n"
-        "<i>Все исходящие письма (рассылка, ответы, HTML) идут только через "
-        "живые SOCKS5 из этого списка — по очереди, без привязок.</i>\n"
-        "<i>🟢 и 🟡 участвуют в пуле; 🔴 пропускается.</i>"
+        f"🟢 OK: {ok_n} · 🟡 не проверен / была ошибка SMTP: {unk_n + warn_n}\n\n"
+        "<i>Все исходящие письма (рассылка, ответы, HTML) идут через SOCKS5 "
+        "из этого списка — по очереди, без привязок.</i>\n"
+        "<i>Ошибка SMTP не отключает прокси — нажмите «Проверить» при сомнениях.</i>"
     )
     kb = _proxies_kb(proxies)
     if isinstance(target, CallbackQuery):
@@ -295,10 +295,11 @@ async def proxy_info(callback: CallbackQuery) -> None:
     if not p:
         return
     st = p.get("is_active")
+    err = (p.get("last_error") or "").strip()
     if st == 1:
         st_line = "🟢 Проверка OK"
-    elif st == 0:
-        st_line = "🔴 Мёртв"
+    elif err:
+        st_line = f"🟡 В пуле · последняя ошибка SMTP: {err[:120]}"
     else:
         st_line = "🟡 Не проверен / в пуле рассылки"
     text = (

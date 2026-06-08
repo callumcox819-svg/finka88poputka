@@ -268,7 +268,11 @@ async def _worker(bot: Bot, settings: Settings, session: ValidationSession) -> N
                     pass
             return
         session.keys_line = ctx.keys_line
-        n_parallel = validation_parallel_workers(ctx.pool.key_count)
+        n_parallel = validation_parallel_workers(
+            ctx.pool.key_count,
+            per_key=ctx.per_key,
+            max_concurrent=ctx.pool.max_concurrent,
+        )
         if n_parallel > 1:
             logger.info(
                 "validation user_id=%s: %s keys, %s parallel consumer(s)",

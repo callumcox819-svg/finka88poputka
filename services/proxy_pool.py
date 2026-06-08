@@ -2,25 +2,9 @@
 
 from __future__ import annotations
 
-from database import list_sendable_proxies, update_proxy_status
+from database import list_sendable_proxies, note_proxy_last_error
 
 _rr_index: dict[int, int] = {}
-
-_PROXY_ERR_MARKERS = (
-    "socks",
-    "proxy",
-    "timeout",
-    "timed out",
-    "connect",
-    "connection",
-    "refused",
-    "unreachable",
-    "network",
-    "tunnel",
-    "generalproxyerror",
-    "socket",
-)
-
 
 def reset_round_robin(user_id: int) -> None:
     _rr_index.pop(int(user_id), None)
@@ -56,16 +40,33 @@ async def pick_next_proxy(user_id: int) -> dict | None:
 
 
 def is_proxy_tunnel_error(exc: BaseException) -> bool:
+    """Только явные ошибки SOCKS/прокси (не любой SMTP «connection»)."""
     err_l = str(exc).lower()
-    return any(m in err_l for m in _PROXY_ERR_MARKERS)
+    if "generalproxyerror" in err_l:
+        return True
+    if "socks" in err_l and any(
+        m in err_l for m in ("error", "failed", "failure", "unable", "cannot", "refused")
+    ):
+        return True
+    if "proxy" in err_l and any(
+        m in err_l for m in ("error", "failed", "failure", "unable", "cannot", "refused", "tunnel")
+    ):
+        return True
+    return False
+
+
+async def note_proxy_send_error(
+    user_id: int, proxy_id: int, error: str
+) -> None:
+    """Записать ошибку отправки, не исключая прокси из пула."""
+    await note_proxy_last_error(
+        proxy_id,
+        user_id,
+        (error or "SMTP via proxy failed")[:500],
+    )
 
 
 async def mark_proxy_mailing_dead(
     user_id: int, proxy_id: int, error: str
 ) -> None:
-    await update_proxy_status(
-        proxy_id,
-        user_id,
-        is_active=0,
-        last_error=(error or "SMTP via proxy failed")[:500],
-    )
+    await note_proxy_send_error(user_id, proxy_id, error)

@@ -239,8 +239,8 @@ async def run_campaign(
             await set_campaign_status(campaign_id, "paused")
             await bot.send_message(
                 chat_id,
-                "❌ В настройках есть прокси, но нет живых.\n"
-                "Проверьте прокси (🌐 Прокси → 🔍 Проверить) и запустите снова.",
+                "❌ В настройках есть прокси, но список пуст.\n"
+                "Добавьте SOCKS5 в 🌐 Прокси и запустите снова.",
             )
             return
 
@@ -250,7 +250,7 @@ async def run_campaign(
         proxy_line = ""
         if proxy_total:
             if fast_on:
-                proxy_line = f"\nПрокси SOCKS5: 1 из {proxy_live}/{proxy_total} (быстрая рассылка)"
+                proxy_line = f"\nПрокси SOCKS5: {proxy_live}/{proxy_total} (быстрая рассылка)"
             else:
                 proxy_line = f"\nПрокси SOCKS5: {proxy_live}/{proxy_total} (все живые по очереди)"
         smart_line = "\n🟢 Умный режим: подставляются умные пресеты." if smart_on else ""

@@ -26,6 +26,7 @@ from database import (
 )
 from services.imap_fetch import (
     fetch_new_mails_sync,
+    is_delivery_bounce_mail,
     is_google_system_mail,
     is_own_outgoing_copy,
     service_label_from_body,
@@ -329,7 +330,8 @@ async def _process_account(
                 (subject or "")[:80],
             )
 
-        await inherit_incoming_gag_link(mail_id, user_id, from_email)
+        if not is_delivery_bounce_mail(from_email, subject):
+            await inherit_incoming_gag_link(mail_id, user_id, from_email)
 
         logger.info(
             "IMAP incoming → TG user_id=%s inbox=%s FROM %s subj=%r",

@@ -957,13 +957,19 @@ async def list_proxies(user_id: int) -> list[dict]:
 
 
 async def list_sendable_proxies(user_id: int) -> list[dict]:
-    """SOCKS5 для рассылки: не помечены мёртвыми (is_active != 0)."""
+    """SOCKS5 для рассылки: все прокси пользователя (без авто-исключения «мёртвых»)."""
     async with db_connect() as db:
+        # Сброс legacy-флагов is_active=0 от старых версий (ошибка SMTP ≠ мёртвый прокси).
+        await db.execute(
+            "UPDATE proxies SET is_active = NULL WHERE user_id = ? AND is_active = 0",
+            (user_id,),
+        )
+        await db.commit()
         cur = await db.execute(
             """
             SELECT id, host, port, username, password, proxy_type, is_active, last_error
             FROM proxies
-            WHERE user_id = ? AND (is_active IS NULL OR is_active = 1)
+            WHERE user_id = ?
             ORDER BY id
             """,
             (user_id,),
@@ -1017,6 +1023,22 @@ async def update_proxy_status(
             WHERE id = ? AND user_id = ?
             """,
             (is_active, last_error, proxy_id, user_id),
+        )
+        await db.commit()
+
+
+async def note_proxy_last_error(
+    proxy_id: int,
+    user_id: int,
+    error: str,
+) -> None:
+    async with db_connect() as db:
+        await db.execute(
+            """
+            UPDATE proxies SET last_error = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            ((error or "")[:500], proxy_id, user_id),
         )
         await db.commit()
 
@@ -2065,6 +2087,14 @@ async def get_gag_generated_link(
     return None
 
 
+_INCOMING_NOT_BOUNCE_SQL = """
+  AND LOWER(COALESCE(from_email, '')) NOT LIKE '%postmaster%'
+  AND LOWER(COALESCE(from_email, '')) NOT LIKE '%mailer-daemon%'
+  AND LOWER(COALESCE(subject, '')) NOT LIKE '%delivery status notification%'
+  AND LOWER(COALESCE(subject, '')) NOT LIKE '%ei voitu toimittaa%'
+"""
+
+
 async def inherit_incoming_gag_link(
     incoming_id: int,
     user_id: int,
@@ -2080,6 +2110,7 @@ async def inherit_incoming_gag_link(
             SELECT generated_link, gag_ad_id FROM incoming_mails
             WHERE user_id = ? AND from_email = ? AND id != ?
               AND TRIM(COALESCE(generated_link, '')) != ''
+              """ + _INCOMING_NOT_BOUNCE_SQL + """
             ORDER BY id DESC
             LIMIT 1
             """,
@@ -2146,6 +2177,7 @@ async def propagate_gag_link_for_lead(
                     generation_error = '',
                     offer_price = ?
                 WHERE user_id = ? AND (lead_id = ? OR from_email = ?)
+                """ + _INCOMING_NOT_BOUNCE_SQL + """
                 """,
                 (link, (gag_ad_id or "")[:64], price, user_id, lid, em),
             )
@@ -2159,6 +2191,7 @@ async def propagate_gag_link_for_lead(
                     generation_error = '',
                     offer_price = ?
                 WHERE user_id = ? AND lead_id = ?
+                """ + _INCOMING_NOT_BOUNCE_SQL + """
                 """,
                 (link, (gag_ad_id or "")[:64], price, user_id, lid),
             )

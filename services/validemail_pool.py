@@ -41,6 +41,12 @@ class ValidemailKeyPool:
         self._rr = 0
         self._pick_lock = asyncio.Lock()
         self._dead: set[int] = set()
+        self._concurrency_per_key = max(1, int(concurrency_per_key))
+
+    @property
+    def max_concurrent(self) -> int:
+        """Макс. одновременных запросов (лимит API ≈ на ключ)."""
+        return len(self._keys) * self._concurrency_per_key
 
     @property
     def key_count(self) -> int:

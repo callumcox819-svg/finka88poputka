@@ -49,8 +49,8 @@ async def _require_proxy(user_id: int) -> list[dict]:
     sendable = await list_sendable_proxies(uid)
     if not sendable:
         raise NoLiveProxyError(
-            "В настройках есть прокси, но нет живых. "
-            "Добавьте SOCKS5 или нажмите «Проверить прокси»."
+            "В настройках есть прокси, но список пуст. "
+            "Добавьте SOCKS5 в 🌐 Прокси."
         )
     return sendable
 
