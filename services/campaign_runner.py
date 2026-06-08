@@ -244,14 +244,15 @@ async def run_campaign(
             )
             return
 
+        smart_on = await get_bool(user_id, "smart_mode")
+        fast_on = await get_bool(user_id, "fast_mailing")
+
         proxy_line = ""
         if proxy_total:
             if fast_on:
                 proxy_line = f"\nПрокси SOCKS5: 1 из {proxy_live}/{proxy_total} (быстрая рассылка)"
             else:
                 proxy_line = f"\nПрокси SOCKS5: {proxy_live}/{proxy_total} (все живые по очереди)"
-        smart_on = await get_bool(user_id, "smart_mode")
-        fast_on = await get_bool(user_id, "fast_mailing")
         smart_line = "\n🟢 Умный режим: подставляются умные пресеты." if smart_on else ""
         fast_line = (
             f"\n⚡ <b>Быстрая рассылка</b>: 1 прокси, до {FAST_MAILING_BATCH} писем/ящик, "
