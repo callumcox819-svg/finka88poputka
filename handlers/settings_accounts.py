@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import tempfile
+import time
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 from database import (
     delete_all_smtp_accounts,
@@ -103,6 +106,14 @@ def _accounts_kb(accounts: list[dict], page: int, total_pages: int) -> InlineKey
     )
     rows.append(
         [InlineKeyboardButton(text="🗑 Удалить все почты", callback_data="acc_delete_all")]
+    )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="📤 Экспорт активных (email:password)",
+                callback_data="acc_export_active",
+            )
+        ]
     )
     rows.append(
         [
@@ -272,6 +283,61 @@ async def acc_imap_check(callback: CallbackQuery, bot: Bot) -> None:
 
     await callback.answer("Проверяю IMAP…")
     await run_imap_check(bot, callback.message.chat.id, callback.from_user.id)
+
+
+@router.callback_query(F.data == "acc_export_active")
+async def acc_export_active(callback: CallbackQuery, bot: Bot) -> None:
+    uid = callback.from_user.id
+    if bg_is_running(uid, "acc_export"):
+        return await callback.answer("Экспорт уже идёт…", show_alert=True)
+
+    await callback.answer("Готовлю файл…")
+
+    async def _job() -> None:
+        accounts = await list_all_smtp_accounts(uid, with_secrets=True)
+        active = [
+            a
+            for a in accounts
+            if int(a.get("enabled", 1)) and int(a.get("smtp_enabled", 1))
+        ]
+        lines = [
+            f"{(a.get('email') or '').strip()}:{(a.get('password') or '').strip()}"
+            for a in active
+            if (a.get("email") or "").strip() and (a.get("password") or "").strip()
+        ]
+        if not lines:
+            await bot.send_message(
+                callback.message.chat.id,
+                "Нет активных ящиков для экспорта (IMAP вкл + SMTP OK).",
+            )
+            return
+
+        out_path = os.path.join(
+            tempfile.gettempdir(),
+            f"accounts_{uid}_{int(time.time())}.txt",
+        )
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+            f.write("\n")
+
+        try:
+            await bot.send_document(
+                callback.message.chat.id,
+                FSInputFile(out_path),
+                caption=(
+                    f"📤 Активные почты: <b>{len(lines)}</b>\n"
+                    f"Формат: <code>email:password</code> (по строке)"
+                ),
+                parse_mode="HTML",
+            )
+        finally:
+            try:
+                os.remove(out_path)
+            except OSError:
+                pass
+
+    if not bg_start(uid, "acc_export", _job()):
+        await callback.answer("Экспорт уже идёт…", show_alert=True)
 
 
 @router.callback_query(F.data == "acc_check_status")
