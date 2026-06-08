@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from database import get_gag_generated_link, get_validated_lead_by_email
-from services.gag_keys import GAG_PROFILE_ADDRESS_KEY, GAG_PROFILE_NAME_KEY
+from database import get_gag_generated_link, get_validated_lead_by_email, get_mailing_sender_display
+from services.gag_keys import GAG_PROFILE_ADDRESS_KEY
 from services.html_templates import GO_FILENAME, load_html_template_for_user
 from region import format_item_price
 from services.placeholders import apply_placeholders
@@ -35,9 +35,17 @@ def resolve_template_filename(body: str) -> str | None:
 
 
 async def build_lead_html_ctx(
-    user_id: int, seller_email: str, lead: dict | None
+    user_id: int,
+    seller_email: str,
+    lead: dict | None,
+    *,
+    account: dict | None = None,
 ) -> dict[str, str]:
-    buyer = (await get_setting(user_id, GAG_PROFILE_NAME_KEY) or "").strip()
+    buyer = ""
+    if account:
+        buyer = (account.get("sender_name") or "").strip()
+    if not buyer:
+        buyer = (await get_mailing_sender_display(user_id) or "").strip()
     address = (await get_setting(user_id, GAG_PROFILE_ADDRESS_KEY) or "").strip()
     if lead:
         title = (lead.get("item_title") or "").strip()
@@ -61,6 +69,7 @@ async def render_campaign_html(
     *,
     camp_body: str,
     to_email: str,
+    account: dict | None = None,
 ) -> tuple[str, str | None]:
     """Собрать HTML для одного получателя рассылки."""
     filename = resolve_template_filename(camp_body)
@@ -83,7 +92,7 @@ async def render_campaign_html(
             "Нет Aqua-ссылки для этого продавца. Сначала «🔗 Создать ссылку» во входящем письме.",
         )
 
-    ctx = await build_lead_html_ctx(user_id, to_email, lead)
+    ctx = await build_lead_html_ctx(user_id, to_email, lead, account=account)
     ctx["LINK"] = gag_link
     html = apply_placeholders(html, link=gag_link, ctx=ctx)
 

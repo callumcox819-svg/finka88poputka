@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from database import get_validated_lead_by_email, get_validated_lead_by_id
-from services.gag_keys import GAG_PROFILE_ADDRESS_KEY, GAG_PROFILE_NAME_KEY
+from database import (
+    get_mailing_sender_display,
+    get_validated_lead_by_email,
+    get_validated_lead_by_id,
+)
+from services.gag_keys import GAG_PROFILE_ADDRESS_KEY
 from services.html_spoof import _resolve_spoof_from_name
 from region import format_item_price
 from services.user_settings import SPOOF_SUBJECT_KEY, get_setting
@@ -19,13 +23,27 @@ async def get_mandatory_html_sender_name(user_id: int) -> str | None:
     return name or None
 
 
+async def _buyer_name_for_html(
+    user_id: int,
+    *,
+    account: dict | None = None,
+) -> str:
+    """Ostaja = sender_name ящика, с которого уходит HTML."""
+    if account:
+        name = (account.get("sender_name") or "").strip()
+        if name:
+            return name
+    return (await get_mailing_sender_display(user_id) or "").strip()
+
+
 async def build_incoming_html_ctx(
     user_id: int,
     mail: dict,
     *,
     gag_link: str,
+    account: dict | None = None,
 ) -> dict[str, str]:
-    buyer = (await get_setting(user_id, GAG_PROFILE_NAME_KEY) or "").strip()
+    buyer = await _buyer_name_for_html(user_id, account=account)
     address = (await get_setting(user_id, GAG_PROFILE_ADDRESS_KEY) or "").strip()
     seller = (mail.get("from_email") or "").strip().lower()
 
@@ -56,5 +74,3 @@ async def build_incoming_html_ctx(
         "ADDRESS": address,
         "LINK": (gag_link or "").strip(),
     }
-
-

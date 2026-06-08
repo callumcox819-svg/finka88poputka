@@ -51,6 +51,7 @@ async def _prepare_outbound(
     email: str,
     is_html: bool,
     smart_on: bool,
+    account: dict | None = None,
 ) -> tuple[str, str] | tuple[None, str]:
     base_body = camp["body"]
     offer_title = await offer_title_for_recipient(user_id, email)
@@ -59,7 +60,7 @@ async def _prepare_outbound(
 
     if is_html:
         body, html_err = await render_campaign_html(
-            user_id, camp_body=body, to_email=email
+            user_id, camp_body=body, to_email=email, account=account
         )
         if html_err:
             return None, html_err
@@ -120,6 +121,7 @@ async def _send_fast_wave(
                     email=email,
                     is_html=is_html,
                     smart_on=smart_on,
+                    account=account,
                 )
                 subject, body = prepared
                 if subject is None:
@@ -377,7 +379,7 @@ async def run_campaign(
 
                 if is_html:
                     body, html_err = await render_campaign_html(
-                        user_id, camp_body=body, to_email=email
+                        user_id, camp_body=body, to_email=email, account=account
                     )
                     if html_err:
                         await mark_failed(campaign_id, email, html_err)

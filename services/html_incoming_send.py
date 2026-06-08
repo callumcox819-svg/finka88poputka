@@ -92,7 +92,10 @@ async def build_incoming_html_body(
             ok=False, error="Нет email получателя"
         )
 
-    ctx = await build_incoming_html_ctx(user_id, mail, gag_link=gag_link)
+    account = await get_smtp_account(int(mail.get("account_id") or 0), user_id)
+    ctx = await build_incoming_html_ctx(
+        user_id, mail, gag_link=gag_link, account=account
+    )
     html_body = _apply_link(raw_html, gag_link)
     html_body = apply_placeholders(html_body, link=gag_link, ctx=ctx)
 
