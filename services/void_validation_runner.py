@@ -25,7 +25,7 @@ from services.lead_keys import (
 )
 from services.seller_name import (
     display_local,
-    make_email_local,
+    make_email_local_variants,
     seller_name_eligible,
     seller_name_from_item,
 )
@@ -159,15 +159,27 @@ async def _process_validation_item_once(
             stats.dup_seller += 1
             return
 
-    local = make_email_local(name)
-    if not local:
+    local_variants = make_email_local_variants(name)
+    if not local_variants:
         async with session.lock:
             stats.short += 1
         return
 
-    found_email, found_domain, fatal = await find_deliverable_email(
-        ctx.pool, local, ctx.domains
-    )
+    found_email: str | None = None
+    found_domain: str | None = None
+    fatal: str | None = None
+    local = local_variants[0]
+
+    for candidate_local in local_variants:
+        found_email, found_domain, fatal = await find_deliverable_email(
+            ctx.pool, candidate_local, ctx.domains
+        )
+        if fatal:
+            local = candidate_local
+            break
+        if found_email:
+            local = candidate_local
+            break
 
     if fatal:
         async with session.lock:
