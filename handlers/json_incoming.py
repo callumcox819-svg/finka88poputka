@@ -81,12 +81,6 @@ async def on_json_document(message: Message, bot, settings: Settings) -> None:
         )
         return
 
-    await _edit_status(
-        message,
-        status,
-        f"🔎 Подбор email… <b>0/{len(items)}</b>\n<i>ValidEmail, подождите…</i>",
-    )
-
     u = message.from_user
     try:
         await run_void_validation(
@@ -120,10 +114,7 @@ async def on_json_text(message: Message, bot, settings: Settings) -> None:
         await message.answer("В JSON нет объявлений (items).")
         return
 
-    status = await message.answer(
-        f"🔎 Подбор email… <b>0/{len(items)}</b>\n<i>ValidEmail, подождите…</i>",
-        parse_mode="HTML",
-    )
+    status = await message.answer("⏳ Загружаю JSON…")
 
     u = message.from_user
     try:

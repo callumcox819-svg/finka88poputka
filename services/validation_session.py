@@ -80,7 +80,12 @@ def format_status(session: ValidationSession, *, finished: bool = False) -> str:
     s = session.stats
     bar, pct = _progress_bar(s.processed, s.total)
     if finished and s.fatal_reason:
-        title = f"⛔ Подбор остановлен: ValidEmail {s.fatal_reason}"
+        if s.fatal_reason == "payment_required":
+            title = "⛔ Подбор остановлен: все ключи ValidEmail исчерпаны"
+        elif s.fatal_reason == "no_config":
+            title = "⛔ Подбор не запущен: нет ключей или доменов"
+        else:
+            title = f"⛔ Подбор остановлен: ValidEmail {s.fatal_reason}"
     elif finished and s.stopped:
         title = "⏹ Подбор остановлен (/stopcheck)"
     elif finished:
@@ -244,6 +249,9 @@ async def _validation_consumer(
 
 async def _worker(bot: Bot, settings: Settings, session: ValidationSession) -> None:
     try:
+        if session.status_message_id:
+            await _edit_status(bot, session, finished=False)
+
         ctx = await ValidemailWorkerContext.create(settings, session.user_id)
         if not ctx:
             err = "❌ Нет ключей ValidEmail или доменов в ⚙️ Настройки → 📊 Приоритет отправки."
