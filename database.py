@@ -838,6 +838,10 @@ async def get_smtp_account(account_id: int, user_id: int) -> dict | None:
 
 async def delete_smtp_account(user_id: int, account_id: int) -> bool:
     async with db_connect() as db:
+        await db.execute(
+            "DELETE FROM incoming_mails WHERE user_id = ? AND account_id = ?",
+            (user_id, account_id),
+        )
         cur = await db.execute(
             "DELETE FROM smtp_accounts WHERE id = ? AND user_id = ?",
             (account_id, user_id),
@@ -865,6 +869,15 @@ async def list_all_smtp_accounts(
 async def delete_inactive_smtp_accounts(user_id: int) -> int:
     """Удалить ящики с enabled=0 (неверный пароль / полностью отключены)."""
     async with db_connect() as db:
+        await db.execute(
+            """
+            DELETE FROM incoming_mails
+            WHERE user_id = ? AND account_id IN (
+                SELECT id FROM smtp_accounts WHERE user_id = ? AND enabled = 0
+            )
+            """,
+            (user_id, user_id),
+        )
         cur = await db.execute(
             """
             DELETE FROM smtp_accounts
@@ -878,6 +891,10 @@ async def delete_inactive_smtp_accounts(user_id: int) -> int:
 
 async def delete_all_smtp_accounts(user_id: int) -> int:
     async with db_connect() as db:
+        await db.execute(
+            "DELETE FROM incoming_mails WHERE user_id = ?",
+            (user_id,),
+        )
         cur = await db.execute(
             "DELETE FROM smtp_accounts WHERE user_id = ?",
             (user_id,),

@@ -272,9 +272,24 @@ async def acc_delete_all_confirm(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "acc_delete_all_yes")
 async def acc_delete_all_yes(callback: CallbackQuery) -> None:
-    n = await delete_all_smtp_accounts(callback.from_user.id)
-    await callback.answer(f"Удалено: {n}")
-    await render_accounts_menu(callback, callback.from_user.id, page=1)
+    uid = callback.from_user.id
+    before = len(await list_all_smtp_accounts(uid))
+    try:
+        n = await delete_all_smtp_accounts(uid)
+    except Exception:
+        logger.exception("acc_delete_all_yes user_id=%s", uid)
+        return await callback.answer(
+            "❌ Не удалось удалить (ошибка БД). Попробуйте ещё раз.",
+            show_alert=True,
+        )
+    if before and n <= 0:
+        await callback.answer(
+            "❌ Ящики не удалились. Обновите меню или напишите админу.",
+            show_alert=True,
+        )
+    else:
+        await callback.answer(f"Удалено: {n}")
+    await render_accounts_menu(callback, uid, page=1)
 
 
 @router.callback_query(F.data == "acc_imap_check")
